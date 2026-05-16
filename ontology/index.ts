@@ -34,11 +34,9 @@ export type {
   Stance,
   LegalStatus,
   EffortLevel,
-  PriorityEvidenceType,
   SignalPosition,
   Signal,
   SignalActor,
-  PriorityEvidence,
 } from './signal.types.js';
 
 export {
@@ -53,31 +51,24 @@ export {
   OPERATIONAL_SIGNAL_TYPES,
   STANCES,
   LEGAL_STATUSES,
-  PRIORITY_EVIDENCE_TYPES,
 } from './signal.types.js';
 
 export type {
   ValidatedSignal,
   ValidatedSignalPosition,
   ValidatedSignalActor,
-  ValidatedPriorityEvidence,
 } from './signal.schema.js';
 
 export {
   signalSchema,
   signalPositionSchema,
   signalActorSchema,
-  priorityEvidenceSchema,
   signalTypeSchema,
   stanceSchema,
   legalStatusSchema,
-  priorityEvidenceTypeSchema,
   effortLevelSchema,
   actorWeightSchema,
   validateSignal,
   safeValidateSignal,
   validateSignalBatch,
-  validatePriorityEvidence,
-  safeValidatePriorityEvidence,
-  validatePriorityEvidenceBatch,
 } from './signal.schema.js';

@@ -17,15 +17,15 @@ Core data model for the Perplexity AI policy awareness dashboard.
 
 ### Positions
 
-An entity's stated or inferred stance on a policy topic. Positions must be explicitly represented — not reconstructed from signal frequency — because the same entity may generate many signals on a topic without taking a clear position, or may take a strong position with minimal public output.
+An entity's stated or inferred stance on a policy topic. Positions are represented as `SignalPosition` objects attached to Signals — they are signal-scoped, not stored as standalone records. For a given entity × topic, the current position is derived from recent, high-confidence position-bearing Signals.
 
-**Query:** "What does entity X say about topic Y?" → `Signal.positions[]` → `SignalPosition`
+**Query:** "What does entity X say about topic Y?" → `Signal.positions[]` filtered by `entityId` + `topic`
 
 ### Priorities
 
-What an entity actually cares about, as revealed by structural indicators: staffing allocation, budget, org structure, lobbying spend, hiring focus. Priorities must not collapse into signal volume alone — an entity that files many comments on a topic is not necessarily prioritizing it more than one that hires a dedicated team and says little publicly.
+What an entity actually cares about. In v1, priorities are inferred from the distribution and `effortLevel` of Signals across topics — not modeled as a separate object. Higher-effort signals on a topic are a stronger indicator of priority than high signal volume alone.
 
-**Query:** "What does entity X seem to prioritize?" → `PriorityEvidence` + weighted `Signal` analysis
+**Query:** "What does entity X seem to prioritize?" → distribution of `Signal.topics` weighted by `Signal.effortLevel`
 
 ### Activities
 
@@ -203,23 +203,31 @@ Operational signals capture what entities actually do with AI, not what they say
 | `primaryEntityId` | `string` | ✓ | Single most responsible / most affected entity |
 | `relatedEntityIds` | `string[]` | ✓ | May be empty; for richer data use `SignalActor` |
 | `legalStatus` | `LegalStatus` | — | See table below |
-| `importanceScore` | `number` | ✓ | 0.0–1.0 editorial importance |
+| `importanceScore` | `number` | ✓ | 1–100; composite ranking score for UI/sorting |
 | `effortLevel` | `1–5` | ✓ | Commitment proxy; see below |
-| `confidenceScore` | `number` | ✓ | 0.0–1.0 source reliability |
+| `confidenceScore` | `number` | ✓ | 1–100; extraction certainty and evidence quality |
 | `dedupeKey` | `string` | ✓ | Deterministic deduplication key |
 | `positions` | `SignalPosition[]` | — | Extracted entity positions |
 
-### Effort Level
+### Scores
 
-`effortLevel` is a coarse proxy for the commitment or resource investment behind a signal. It exists to prevent a press release from being weighted the same as a major regulatory filing.
+Three numeric fields describe different dimensions of a signal. They are independent and must not be conflated.
+
+| Field | Scale | Question it answers |
+|-------|-------|---------------------|
+| `importanceScore` | 1–100 | "How important is this signal for the dashboard user?" Composite ranking score for UI sorting and filtering. May incorporate entity priority, topic relevance, and `effortLevel`, but that computation is downstream logic. |
+| `effortLevel` | 1–5 | "How much effort or commitment did this signal likely require from the entity?" Intrinsic property of the signal, set at classification time. |
+| `confidenceScore` | 1–100 | "How confident are we that this signal is correct and well-classified?" Reflects source reliability and extraction certainty — independent of importance or effort. |
+
+**Effort Level reference:**
 
 | Level | Meaning | Examples |
 |-------|---------|---------|
-| `1` | Lightweight / low-effort update | Social post, brief statement, minor policy tweak |
-| `2` | Normal update | Standard report, routine filing, comment letter |
-| `3` | Substantive artifact or action | Detailed white paper, formal testimony, capability release |
-| `4` | Major filing / policy / deployment action | Major rulemaking, large procurement contract, significant model release |
-| `5` | Very high-effort / high-commitment action | National AI strategy, landmark legislation, frontier model deployment |
+| `1` | Very light | Social post, brief statement, minor policy tweak |
+| `2` | Routine | Standard report, routine filing, comment letter |
+| `3` | Substantive | Detailed white paper, formal testimony, capability release |
+| `4` | Major | Major rulemaking, large procurement contract, significant model release |
+| `5` | Very high-commitment | National AI strategy, landmark legislation, frontier model deployment |
 
 ### Legal Status
 
@@ -238,9 +246,9 @@ Applies primarily to process signals (rules, bills, orders).
 
 ## SignalPosition
 
-An entity's stance on a policy topic, explicitly extracted from a signal. Exists so positional data is queryable without parsing prose summaries.
+An entity's stance on a policy topic, attached to the Signal it was extracted from. Positions are signal-scoped — they are not stored as standalone records. For a given entity × topic, the current position is derived from recent, high-confidence position-bearing Signals.
 
-**Why separate from Signal?** A signal (e.g. a comment letter) may contain multiple positions on multiple topics. Embedding positions as a structured array on the signal keeps them linked to evidence while making them independently queryable.
+**Why on Signal, not standalone?** A signal (e.g. a comment letter) may express multiple positions on multiple topics. Embedding them as a structured array keeps each position linked to its source evidence while making them queryable across signals.
 
 | Field | Type | Required | Notes |
 |-------|------|----------|-------|
@@ -284,51 +292,18 @@ A join record connecting an entity to a signal with explicit role and layer cont
 
 ---
 
-## PriorityEvidence
-
-Structural indicators of what an entity actually prioritizes. **Not a Signal.**
-
-**Why separate from Signal?** Signals are discrete events. Priority evidence is structural state: how many staff are dedicated to AI policy, how much is being spent on AI-related lobbying, whether a new office was created. These reveal priorities without necessarily generating any observable policy event. If priorities were inferred from signal frequency alone, entities that act quietly but invest heavily would be systematically underrepresented.
-
-| Field | Type | Required | Notes |
-|-------|------|----------|-------|
-| `id` | `string` | ✓ | Stable kebab-case slug |
-| `entityId` | `string` | ✓ | |
-| `topic` | `string` | — | Policy topic, if specific |
-| `type` | `PriorityEvidenceType` | ✓ | See table below |
-| `summary` | `string` | ✓ | What the evidence shows |
-| `valueText` | `string` | — | Human-readable value: "$4.2M", "12 FTEs", "↑ 40% YoY" |
-| `direction` | `string` | — | `increase`, `decrease`, `stable`, or `new` |
-| `dateObserved` | `string` | ✓ | ISO 8601 |
-| `sourceIds` | `string[]` | ✓ | min 1 |
-| `confidenceScore` | `number` | ✓ | 0.0–1.0 |
-
-### Priority Evidence Types
-
-| Type | Covers |
-|------|--------|
-| `staffing` | Headcount, FTEs, team size dedicated to AI or policy |
-| `spending` | Budget allocation, operational expenditure |
-| `hiring_focus` | Open roles, recruiting patterns, stated hiring priorities |
-| `org_structure` | Reporting lines, new offices, centralization vs. distribution |
-| `training_investment` | Internal training programs, upskilling, AI literacy initiatives |
-| `procurement_capacity` | Contracts, vendor relationships, infrastructure investment |
-| `lobbying_spend` | Aggregate lobbying expenditure (complements individual filing signals) |
-| `external_advisory_capacity` | Advisory board composition, external expert engagements |
-
----
 
 ## Files
 
 ```
 ontology/
-  types.ts          — EntityType, Layer, Role, PriorityTier, Entity interface
-  schema.ts         — Entity Zod schema, validateEntity helpers
-  constants.ts      — DEFAULT_LAYER_BY_TYPE, TYPICAL_ROLES_BY_TYPE, JURISDICTION, SECTOR
-  signal.types.ts   — Signal, SignalPosition, SignalActor, PriorityEvidence interfaces;
-                      SignalType, Stance, LegalStatus, EffortLevel, PriorityEvidenceType
-  signal.schema.ts  — Signal/PriorityEvidence Zod schemas and validators
-  index.ts          — Barrel re-export of all above
+  types.ts         — EntityType, Layer, Role, Entity interface
+  schema.ts        — Entity Zod schema, validateEntity helpers
+  constants.ts     — DEFAULT_LAYER_BY_TYPE, TYPICAL_ROLES_BY_TYPE, JURISDICTION, SECTOR
+  signal.types.ts  — Signal, SignalPosition, SignalActor interfaces;
+                     SignalType, Stance, LegalStatus, EffortLevel
+  signal.schema.ts — Signal/SignalActor Zod schemas and validators
+  index.ts         — Barrel re-export of all above
 ```
 
 ---
@@ -337,11 +312,11 @@ ontology/
 
 | Question | Primary model |
 |----------|--------------|
-| What did entity X say about topic Y? | `Signal.positions[]` → `SignalPosition.stance` |
-| What does entity X seem to prioritize? | `PriorityEvidence` by `entityId` + weighted signals |
+| What did entity X say about topic Y? | `Signal.positions[]` filtered by `entityId` + `topic` |
+| What does entity X seem to prioritize? | `Signal.topics` distribution weighted by `Signal.effortLevel` |
 | What has entity X been doing? | `Signal` by `primaryEntityId`; `SignalActor` by `entityId` |
 | Who else was involved in signal Z? | `SignalActor` by `signalId` |
-| What changed for entity X over time? | Dated `Signal` and `PriorityEvidence` records |
+| What changed for entity X over time? | Dated `Signal` records sorted by `eventDate` |
 | How seriously did entity X commit to action A? | `Signal.effortLevel` |
 | Is entity X's stated position backed by action? | Compare `SignalPosition.stance` vs. operational signals |
 

@@ -4,7 +4,6 @@ import {
   SIGNAL_TYPES,
   STANCES,
   LEGAL_STATUSES,
-  PRIORITY_EVIDENCE_TYPES,
 } from './signal.types.js';
 
 // ---------------------------------------------------------------------------
@@ -16,8 +15,6 @@ export const signalTypeSchema = z.enum(SIGNAL_TYPES);
 export const stanceSchema = z.enum(STANCES);
 
 export const legalStatusSchema = z.enum(LEGAL_STATUSES);
-
-export const priorityEvidenceTypeSchema = z.enum(PRIORITY_EVIDENCE_TYPES);
 
 export const effortLevelSchema = z.union([
   z.literal(1),
@@ -40,10 +37,8 @@ const isoDateSchema = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}/, 'must start with YYYY-MM-DD');
 
-const scoreSchema = z
-  .number()
-  .min(0, 'score must be ≥ 0')
-  .max(1, 'score must be ≤ 1');
+// importanceScore and confidenceScore are both 1–100 integers
+const score100Schema = z.number().int().min(1).max(100);
 
 const idSchema = z.string().min(1).max(128);
 
@@ -107,11 +102,11 @@ export const signalSchema = z.object({
 
   legalStatus: legalStatusSchema.optional(),
 
-  importanceScore: scoreSchema,
+  importanceScore: score100Schema,
 
   effortLevel: effortLevelSchema,
 
-  confidenceScore: scoreSchema,
+  confidenceScore: score100Schema,
 
   dedupeKey: z.string().min(1).max(256),
 
@@ -133,36 +128,6 @@ export const signalActorSchema = z.object({
 });
 
 export type ValidatedSignalActor = z.infer<typeof signalActorSchema>;
-
-// ---------------------------------------------------------------------------
-// PriorityEvidence schema
-// ---------------------------------------------------------------------------
-
-export const priorityEvidenceSchema = z.object({
-  id: idSchema,
-
-  entityId: z.string().min(1),
-
-  topic: z.string().min(1).max(200).optional(),
-
-  type: priorityEvidenceTypeSchema,
-
-  summary: z.string().min(1).max(2000),
-
-  valueText: z.string().min(1).max(200).optional(),
-
-  direction: z.enum(['increase', 'decrease', 'stable', 'new']).optional(),
-
-  dateObserved: isoDateSchema,
-
-  sourceIds: z
-    .array(z.string().min(1))
-    .min(1, 'at least one source required'),
-
-  confidenceScore: scoreSchema,
-});
-
-export type ValidatedPriorityEvidence = z.infer<typeof priorityEvidenceSchema>;
 
 // ---------------------------------------------------------------------------
 // Signal validation helpers
@@ -190,42 +155,6 @@ export function validateSignalBatch(items: unknown[]): {
 
   for (let i = 0; i < items.length; i++) {
     const result = signalSchema.safeParse(items[i]);
-    if (result.success) {
-      valid.push(result.data);
-    } else {
-      invalid.push({ index: i, error: result.error });
-    }
-  }
-
-  return { valid, invalid };
-}
-
-// ---------------------------------------------------------------------------
-// PriorityEvidence validation helpers
-// ---------------------------------------------------------------------------
-
-/** Throws ZodError with full path/message detail on invalid input. */
-export function validatePriorityEvidence(data: unknown): ValidatedPriorityEvidence {
-  return priorityEvidenceSchema.parse(data);
-}
-
-/** Returns { success, data, error } — never throws. */
-export function safeValidatePriorityEvidence(
-  data: unknown,
-): z.SafeParseReturnType<unknown, ValidatedPriorityEvidence> {
-  return priorityEvidenceSchema.safeParse(data);
-}
-
-/** Validate an array of evidence records; returns { valid[], invalid[{ index, error }] }. */
-export function validatePriorityEvidenceBatch(items: unknown[]): {
-  valid: ValidatedPriorityEvidence[];
-  invalid: Array<{ index: number; error: z.ZodError }>;
-} {
-  const valid: ValidatedPriorityEvidence[] = [];
-  const invalid: Array<{ index: number; error: z.ZodError }> = [];
-
-  for (let i = 0; i < items.length; i++) {
-    const result = priorityEvidenceSchema.safeParse(items[i]);
     if (result.success) {
       valid.push(result.data);
     } else {

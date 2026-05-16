@@ -174,45 +174,29 @@ export type LegalStatus = (typeof LEGAL_STATUSES)[number];
 
 // ---------------------------------------------------------------------------
 // Effort Level
-// Coarse proxy for commitment; prevents heavy filings from equating minor updates.
-// 1 = lightweight update → 5 = very high-effort / high-commitment action
+// Intrinsic property of the signal: how much commitment or effort did this
+// action likely require from the entity?
+// 1 = very light  →  5 = very high-effort / high-commitment
 // ---------------------------------------------------------------------------
 
 export type EffortLevel = 1 | 2 | 3 | 4 | 5;
 
 // ---------------------------------------------------------------------------
-// Priority Evidence Types
-// ---------------------------------------------------------------------------
-
-export const PRIORITY_EVIDENCE_TYPES = [
-  'staffing',
-  'spending',
-  'hiring_focus',
-  'org_structure',
-  'training_investment',
-  'procurement_capacity',
-  'lobbying_spend',
-  'external_advisory_capacity',
-] as const;
-
-export type PriorityEvidenceType = (typeof PRIORITY_EVIDENCE_TYPES)[number];
-
-// ---------------------------------------------------------------------------
-// SignalPosition — an entity's stance on a topic, extracted from a signal
+// SignalPosition — an entity's stance on a topic, attached to a Signal
 //
-// Exists so positional data is explicit and queryable, rather than buried in
-// signal summaries. Enables: "What does entity X say about topic Y?"
+// Positions are signal-scoped. For a given entity × topic, the current
+// position is derived from recent, high-confidence position-bearing Signals.
 // ---------------------------------------------------------------------------
 
 export interface SignalPosition {
-  /** Policy topic or concept this position is about (e.g. "frontier model thresholds") */
+  /** Policy topic or concept (e.g. "frontier model thresholds") */
   topic: string;
 
   stance: Stance;
 
   /**
-   * explicit = the source directly states the entity's position
-   * implicit = the position is inferred from operational behavior or other actions
+   * explicit = source directly states the entity's position
+   * implicit = position inferred from operational behavior or pattern of actions
    */
   evidence: 'explicit' | 'implicit';
 
@@ -264,18 +248,27 @@ export interface Signal {
 
   legalStatus?: LegalStatus;
 
-  /** Editorial importance of this signal, 0.0–1.0 */
+  /**
+   * Composite ranking score for UI sorting and filtering, 1–100.
+   * Answers: "How important is this signal for the dashboard user?"
+   * May incorporate entity priority, topic relevance, and effortLevel,
+   * but that computation is downstream logic — not defined here.
+   */
   importanceScore: number;
 
   /**
-   * Coarse proxy for the commitment or effort behind this signal.
-   * Prevents a lobbying disclosure from being treated the same as a press release.
-   * 1 = lightweight update  2 = normal  3 = substantive artifact or action
-   * 4 = major filing / policy / deployment action  5 = very high-commitment action
+   * How much effort or commitment did this signal likely require from the entity?
+   * Intrinsic to the signal; set at classification time.
+   * 1 = very light  2 = routine  3 = substantive  4 = major  5 = very high-commitment
    */
   effortLevel: EffortLevel;
 
-  /** Source reliability and signal clarity, 0.0–1.0 */
+  /**
+   * Extraction certainty and evidence quality, 1–100.
+   * Answers: "How confident are we that this signal is correct and well-classified?"
+   * Reflects source reliability and classification clarity — independent of
+   * importance or effort.
+   */
   confidenceScore: number;
 
   /**
@@ -307,41 +300,4 @@ export interface SignalActor {
 
   /** Optional 1–5 weight indicating this actor's relative centrality in the signal */
   actorWeight?: number;
-}
-
-// ---------------------------------------------------------------------------
-// PriorityEvidence — structural indicators of what an entity actually prioritizes
-//
-// NOT a Signal. Exists because "priorities" must not collapse into signal
-// frequency alone. Staffing levels, budget allocations, org structure, and
-// lobbying spend reveal priorities independent of any discrete event.
-//
-// Enables: "What does this entity seem to prioritize?" without over-counting
-// entities that generate high signal volume on a topic.
-// ---------------------------------------------------------------------------
-
-export interface PriorityEvidence {
-  id: string;
-
-  entityId: string;
-
-  /** Policy topic this evidence pertains to, if specific */
-  topic?: string;
-
-  type: PriorityEvidenceType;
-
-  summary: string;
-
-  /** Human-readable value: "$4.2M", "12 FTEs", "↑ 40% YoY" */
-  valueText?: string;
-
-  direction?: 'increase' | 'decrease' | 'stable' | 'new';
-
-  /** ISO 8601 date this was observed or reported */
-  dateObserved: string;
-
-  sourceIds: [string, ...string[]];
-
-  /** Source reliability and data clarity, 0.0–1.0 */
-  confidenceScore: number;
 }
