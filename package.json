@@ -1,16 +1,27 @@
 {
   "name": "perplexity-ai-policy",
-  "version": "0.1.0",
   "private": true,
-  "type": "module",
+  "version": "0.1.0",
   "scripts": {
-    "typecheck": "tsc --noEmit",
-    "build": "tsc"
-  },
-  "dependencies": {
-    "zod": "^3.23.0"
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "dev:web": "pnpm --filter web dev",
+    "dev:worker": "pnpm --filter monitor dev",
+    "db:migrate": "pnpm --filter @perplexity/db migrate",
+    "db:seed": "pnpm --filter @perplexity/db seed",
+    "db:studio": "pnpm --filter @perplexity/db studio"
   },
   "devDependencies": {
+    "@types/node": "^20.19.41",
     "typescript": "^5.4.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@prisma/client",
+      "@prisma/engines",
+      "esbuild",
+      "msgpackr-extract",
+      "prisma"
+    ]
   }
 }

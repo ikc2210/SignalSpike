@@ -4,8 +4,6 @@
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "lib": ["ES2022"],
-    "outDir": "dist",
-    "rootDir": ".",
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
@@ -17,7 +15,5 @@
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true
-  },
-  "include": ["ontology/**/*.ts"],
-  "exclude": ["dist", "node_modules"]
+  }
 }

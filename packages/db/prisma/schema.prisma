@@ -1,0 +1,120 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model QueryTemplate {
+  id              String   @id @default(cuid())
+  slug            String   @unique
+  name            String
+  templateType    String   // entity_type_discovery | entity_monitoring
+  entityTypes     String[]
+  targetEntityIds String[]
+  objective       String   // positions | priorities | activities
+  topics          String[]
+  queryPattern    String
+  cadence         String   // daily | weekly | monthly | ad_hoc
+  domainAllowlist String[]
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  runs     MonitoringRun[]
+  schedule Schedule?
+}
+
+model Entity {
+  id            String   @id @default(cuid())
+  name          String
+  entityType    String
+  defaultLayer  String
+  jurisdictions String[]
+  sectors       String[]
+  active        Boolean  @default(true)
+  approvalState String   @default("proposed")
+  subtype       String?
+  description   String?
+  discoveredBy  String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  aliases  EntityAlias[]
+  runs     MonitoringRun[]
+  findings RunFinding[]
+}
+
+model EntityAlias {
+  id       String @id @default(cuid())
+  entityId String
+  alias    String
+
+  entity Entity @relation(fields: [entityId], references: [id], onDelete: Cascade)
+
+  @@unique([entityId, alias])
+  @@index([entityId])
+}
+
+model MonitoringRun {
+  id            String    @id @default(cuid())
+  templateId    String
+  entityId      String?
+  status        String    @default("queued")
+  queryExpanded String
+  rawResponse   Json?
+  errorMessage  String?
+  createdAt     DateTime  @default(now())
+  startedAt     DateTime?
+  completedAt   DateTime?
+
+  template QueryTemplate @relation(fields: [templateId], references: [id])
+  entity   Entity?       @relation(fields: [entityId], references: [id])
+  sources  RunSource[]
+  findings RunFinding[]
+}
+
+model RunSource {
+  id      String   @id @default(cuid())
+  runId   String
+  url     String
+  title   String?
+  snippet String?
+  domain  String?
+  citedAt DateTime @default(now())
+
+  run MonitoringRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@index([runId])
+}
+
+model RunFinding {
+  id         String   @id @default(cuid())
+  runId      String
+  entityId   String?
+  summary    String
+  signalType String?
+  topics     String[]
+  createdAt  DateTime @default(now())
+
+  run    MonitoringRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  entity Entity?       @relation(fields: [entityId], references: [id])
+
+  @@index([runId])
+  @@index([entityId])
+}
+
+model Schedule {
+  id         String    @id @default(cuid())
+  templateId String    @unique
+  cadence    String
+  nextRunAt  DateTime
+  lastRunAt  DateTime?
+  active     Boolean   @default(true)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  template QueryTemplate @relation(fields: [templateId], references: [id])
+}
