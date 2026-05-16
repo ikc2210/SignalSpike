@@ -25,6 +25,23 @@ export {
 } from './constants.js';
 
 // ---------------------------------------------------------------------------
+// Query ontology
+// ---------------------------------------------------------------------------
+
+export type { Objective, Cadence, QueryTemplate } from './query.types.js';
+export { OBJECTIVES, CADENCES } from './query.types.js';
+
+export type { ValidatedQueryTemplate } from './query.schema.js';
+export {
+  queryTemplateSchema,
+  objectiveSchema,
+  cadenceSchema,
+  validateQueryTemplate,
+  safeValidateQueryTemplate,
+  validateQueryTemplateBatch,
+} from './query.schema.js';
+
+// ---------------------------------------------------------------------------
 // Signal ontology
 // ---------------------------------------------------------------------------
 

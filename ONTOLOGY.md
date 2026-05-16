@@ -293,17 +293,57 @@ A join record connecting an entity to a signal with explicit role and layer cont
 ---
 
 
+## QueryTemplate
+
+A reusable, parameterized query definition. Templates are entity-type-specific and objective-driven — they encode *what to ask*, *about whom*, and *how often*.
+
+`domainAllowlist` is per-template, not per entity type. Some templates for the same entity type use it for precision (e.g., restrict to official government domains); others omit it for broader discovery. There is no denylist.
+
+| Field | Type | Required | Notes |
+|-------|------|----------|-------|
+| `id` | `string` | ✓ | Stable kebab-case slug |
+| `name` | `string` | ✓ | Human-readable label |
+| `entityTypes` | `EntityType[]` | ✓ | min 1; which entity types this template targets |
+| `targetEntityIds` | `string[]` | — | Pin to specific entities; if omitted, applies to all entities of `entityTypes` |
+| `objective` | `Objective` | ✓ | `positions`, `priorities`, or `activities` |
+| `topics` | `string[]` | — | Topic scope; if omitted, the query is topic-agnostic |
+| `queryPattern` | `string` | ✓ | Query string; may use placeholders (e.g. `{entity}`, `{topic}`) resolved at run time |
+| `cadence` | `Cadence` | ✓ | `daily`, `weekly`, `monthly`, or `ad_hoc` |
+| `domainAllowlist` | `string[]` | — | Restrict results to these domains; omit for broader discovery |
+| `active` | `boolean` | ✓ | |
+
+### Objective Values
+
+| Value | Question the query answers |
+|-------|---------------------------|
+| `positions` | What stance does this entity take on a topic? |
+| `priorities` | What does this entity appear to prioritize? |
+| `activities` | What has this entity been doing? |
+
+### Cadence Values
+
+| Value | When to run |
+|-------|-------------|
+| `daily` | High-velocity entities or fast-moving topics |
+| `weekly` | Standard monitoring cadence |
+| `monthly` | Slower-moving entities or structural questions |
+| `ad_hoc` | One-off or manually triggered |
+
+---
+
 ## Files
 
 ```
 ontology/
-  types.ts         — EntityType, Layer, Role, Entity interface
-  schema.ts        — Entity Zod schema, validateEntity helpers
-  constants.ts     — DEFAULT_LAYER_BY_TYPE, TYPICAL_ROLES_BY_TYPE, JURISDICTION, SECTOR
-  signal.types.ts  — Signal, SignalPosition, SignalActor interfaces;
-                     SignalType, Stance, LegalStatus, EffortLevel
-  signal.schema.ts — Signal/SignalActor Zod schemas and validators
-  index.ts         — Barrel re-export of all above
+  types.ts          — EntityType, Layer, Role, Entity interface
+  schema.ts         — Entity Zod schema, validateEntity helpers
+  constants.ts      — DEFAULT_LAYER_BY_TYPE, TYPICAL_ROLES_BY_TYPE, JURISDICTION, SECTOR
+  signal.types.ts   — Signal, SignalPosition, SignalActor interfaces;
+                      SignalType, Stance, LegalStatus, EffortLevel
+  signal.schema.ts  — Signal/SignalActor Zod schemas and validators
+  query.types.ts    — QueryTemplate interface; Objective, Cadence
+  query.schema.ts   — QueryTemplate Zod schema and validators
+  index.ts          — Barrel re-export of all above
 ```
 
 ---
