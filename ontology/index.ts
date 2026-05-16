@@ -20,6 +20,7 @@ export type { JurisdictionCode, SectorTag } from './constants.js';
 export {
   DEFAULT_LAYER_BY_TYPE,
   TYPICAL_ROLES_BY_TYPE,
+  STARTER_PRIMARY_DOMAINS_BY_ENTITY_TYPE,
   JURISDICTION,
   SECTOR,
 } from './constants.js';
