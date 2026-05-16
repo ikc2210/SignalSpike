@@ -79,18 +79,6 @@ Roles are context-specific and can be held simultaneously. One entity may be a `
 
 ---
 
-## Priority Tiers
-
-Editorial signal for dashboard prominence. Set per entity.
-
-| Tier | Meaning |
-|------|---------|
-| `1` | Watch closely — highest regulatory salience or public attention |
-| `2` | Active participant — significant but not tier-1 urgency |
-| `3` | Background awareness — relevant but lower immediate priority |
-
----
-
 ## Entity Fields
 
 | Field | Type | Required | Notes |
@@ -101,7 +89,6 @@ Editorial signal for dashboard prominence. Set per entity.
 | `defaultLayer` | `Layer` | ✓ | Most common layer for this entity |
 | `jurisdictions` | `string[]` | ✓ | ISO 3166 codes, `"EU"`, or `"global"`; min 1 |
 | `sectors` | `string[]` | ✓ | e.g. `["ai", "finance"]`; min 1 |
-| `priorityTier` | `1 \| 2 \| 3` | ✓ | Editorial priority |
 | `active` | `boolean` | ✓ | `false` if dissolved, merged, or inactive |
 | `aliases` | `string[]` | — | Acronyms, former names, alternate spellings |
 | `description` | `string` | — | 1–3 sentence prose summary |

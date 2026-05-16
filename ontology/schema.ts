@@ -11,12 +11,6 @@ export const layerSchema = z.enum(LAYERS);
 
 export const roleSchema = z.enum(ROLES);
 
-export const priorityTierSchema = z.union([
-  z.literal(1),
-  z.literal(2),
-  z.literal(3),
-]);
-
 // Kebab-case alphanumeric ID: "ftc", "eu-ai-office", "openai-llc"
 const idSchema = z
   .string()
@@ -49,8 +43,6 @@ export const entitySchema = z.object({
   sectors: z
     .array(z.string().min(1).max(64))
     .min(1, 'at least one sector required'),
-
-  priorityTier: priorityTierSchema,
 
   active: z.boolean(),
 

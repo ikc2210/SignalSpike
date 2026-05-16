@@ -46,13 +46,6 @@ export const ROLES = [
 export type Role = (typeof ROLES)[number];
 
 // ---------------------------------------------------------------------------
-// Priority Tier — editorial prioritization for the dashboard
-// 1 = highest priority (watch closely), 3 = lowest (background awareness)
-// ---------------------------------------------------------------------------
-
-export type PriorityTier = 1 | 2 | 3;
-
-// ---------------------------------------------------------------------------
 // Core Entity interface
 // ---------------------------------------------------------------------------
 
@@ -79,9 +72,6 @@ export interface Entity {
    * At least one required.
    */
   sectors: [string, ...string[]];
-
-  /** Editorial priority for this dashboard: 1 = highest, 3 = background */
-  priorityTier: PriorityTier;
 
   /** False when entity is dissolved, merged, or no longer policy-active */
   active: boolean;

@@ -2,7 +2,7 @@
 // Entity ontology
 // ---------------------------------------------------------------------------
 
-export type { Entity, EntityType, Layer, Role, PriorityTier } from './types.js';
+export type { Entity, EntityType, Layer, Role } from './types.js';
 export { ENTITY_TYPES, LAYERS, ROLES } from './types.js';
 
 export type { ValidatedEntity } from './schema.js';
@@ -11,7 +11,6 @@ export {
   entityTypeSchema,
   layerSchema,
   roleSchema,
-  priorityTierSchema,
   validateEntity,
   safeValidateEntity,
   validateEntityBatch,
