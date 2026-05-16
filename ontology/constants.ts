@@ -8,19 +8,16 @@ import type { EntityType, Layer, Role } from './types.js';
 // ---------------------------------------------------------------------------
 
 export const DEFAULT_LAYER_BY_TYPE: Record<EntityType, Layer> = {
-  legislative_actor:                 'rule_setters',
-  executive_body:                    'rule_setters',
-  regulator:                         'rule_setters',
-  court_tribunal:                    'rule_setters',
-  subnational_government:            'rule_setters',
-  international_public_body:         'rule_setters',
-  frontier_developer:                'regulated_entities',
-  ai_company:                        'regulated_entities',
-  compute_infra_provider:            'regulated_entities',
-  standards_or_evaluator:            'standards_agenda',
-  research_policy_org:               'standards_agenda',
-  civil_society_or_professional_group: 'standards_agenda',
-  industry_or_investor_group:        'regulated_entities',
+  national_legislature:       'rule_setters',
+  executive_body:             'rule_setters',
+  cross_cutting_regulator:    'rule_setters',
+  sectoral_regulator:         'rule_setters',
+  court_tribunal:             'rule_setters',
+  international_organization: 'rule_setters',
+  frontier_developer:         'regulated_entities',
+  compute_infra_provider:     'regulated_entities',
+  standards_body:             'standards_agenda',
+  safety_institute:           'standards_agenda',
 };
 
 // ---------------------------------------------------------------------------
@@ -32,19 +29,16 @@ export const DEFAULT_LAYER_BY_TYPE: Record<EntityType, Layer> = {
 // ---------------------------------------------------------------------------
 
 export const TYPICAL_ROLES_BY_TYPE: Record<EntityType, Role[]> = {
-  legislative_actor:                 ['proposer'],
-  executive_body:                    ['proposer', 'enforcer'],
-  regulator:                         ['enforcer', 'monitor'],
-  court_tribunal:                    ['enforcer'],
-  subnational_government:            ['proposer', 'enforcer'],
-  international_public_body:         ['proposer', 'monitor'],
-  frontier_developer:                ['target'],
-  ai_company:                        ['target'],
-  compute_infra_provider:            ['target'],
-  standards_or_evaluator:            ['monitor', 'proposer'],
-  research_policy_org:               ['monitor', 'proposer'],
-  civil_society_or_professional_group: ['monitor', 'proposer'],
-  industry_or_investor_group:        ['target', 'proposer'],
+  national_legislature:       ['proposer'],
+  executive_body:             ['proposer', 'enforcer'],
+  cross_cutting_regulator:    ['enforcer', 'monitor'],
+  sectoral_regulator:         ['enforcer', 'monitor'],
+  court_tribunal:             ['enforcer'],
+  international_organization: ['proposer', 'monitor'],
+  frontier_developer:         ['target'],
+  compute_infra_provider:     ['target'],
+  standards_body:             ['proposer', 'monitor'],
+  safety_institute:           ['monitor', 'proposer'],
 };
 
 // ---------------------------------------------------------------------------

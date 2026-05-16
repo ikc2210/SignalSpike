@@ -40,19 +40,16 @@ The discrete actions an entity takes: publishing documents, advancing legislatio
 
 | Type | Covers |
 |------|--------|
-| `legislative_actor` | Legislatures, parliaments, congressional committees |
-| `executive_body` | Ministries, executive offices, departments, advisory bodies, task forces |
-| `regulator` | Both cross-cutting regulators (FTC, ICO) and sectoral regulators (OCC, FCA) |
+| `national_legislature` | Legislatures, parliaments, congressional committees |
+| `executive_body` | Ministries, executive offices, departments, task forces |
+| `cross_cutting_regulator` | Horizontal regulators with authority across sectors (FTC, ICO) |
+| `sectoral_regulator` | Regulators with authority in a specific sector (OCC, FCA, FAA) |
 | `court_tribunal` | Courts, appellate bodies, arbitration panels |
-| `subnational_government` | States, provinces, cities acting in a policy-making capacity |
-| `international_public_body` | Foreign governments **and** international organizations (OECD, UN bodies, ITU) |
+| `international_organization` | Multilateral bodies and foreign governments (OECD, UN bodies, ITU, EU) |
 | `frontier_developer` | Labs whose primary focus is advancing AI capabilities toward AGI |
-| `ai_company` | AI product and service companies not on the capability frontier |
 | `compute_infra_provider` | Cloud hyperscalers, chip designers, data-center operators |
-| `standards_or_evaluator` | Standards bodies (ISO, IEEE, NIST) and safety/evaluation institutes (METR, UK AISI) |
-| `research_policy_org` | Think tanks and academic research labs that produce policy-relevant work |
-| `civil_society_or_professional_group` | NGOs, advocacy organizations, professional associations |
-| `industry_or_investor_group` | Trade associations, industry coalitions, major investors with policy positions |
+| `standards_body` | Formal standards organizations (ISO, IEEE, NIST) |
+| `safety_institute` | AI safety and evaluation institutes (METR, UK AISI) |
 
 ---
 

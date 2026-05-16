@@ -5,19 +5,16 @@
 // ---------------------------------------------------------------------------
 
 export const ENTITY_TYPES = [
-  'legislative_actor',         // Legislatures, parliaments, congressional committees
-  'executive_body',            // Ministries, executive offices, departments, task forces
-  'regulator',                 // Cross-cutting and sectoral regulators
-  'court_tribunal',            // Courts, appellate bodies, arbitration panels
-  'subnational_government',    // States, provinces, cities acting in policy capacity
-  'international_public_body', // Foreign governments and international organizations
-  'frontier_developer',        // Labs pushing the capability frontier (e.g. AGI-focused)
-  'ai_company',                // AI product/service companies not on the frontier
-  'compute_infra_provider',    // Cloud, chip, data-center providers
-  'standards_or_evaluator',    // Standards bodies and safety/evaluation institutes
-  'research_policy_org',       // Think tanks and academic research labs
-  'civil_society_or_professional_group', // NGOs, advocacy groups, professional associations
-  'industry_or_investor_group',          // Trade associations, coalitions, major investors
+  'national_legislature',       // Legislatures, parliaments, congressional committees
+  'executive_body',             // Ministries, executive offices, departments, task forces
+  'cross_cutting_regulator',    // Horizontal regulators with authority across sectors (FTC, ICO)
+  'sectoral_regulator',         // Regulators with authority in a specific sector (OCC, FCA, FAA)
+  'court_tribunal',             // Courts, appellate bodies, arbitration panels
+  'international_organization', // Multilateral bodies and foreign governments
+  'frontier_developer',         // Labs pushing the capability frontier (e.g. AGI-focused)
+  'compute_infra_provider',     // Cloud hyperscalers, chip designers, data-center operators
+  'standards_body',             // Formal standards organizations (ISO, IEEE, NIST)
+  'safety_institute',           // AI safety and evaluation institutes (METR, UK AISI)
 ] as const;
 
 export type EntityType = (typeof ENTITY_TYPES)[number];
