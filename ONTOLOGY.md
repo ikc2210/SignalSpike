@@ -297,14 +297,28 @@ A join record connecting an entity to a signal with explicit role and layer cont
 
 A reusable, parameterized query definition. Templates are entity-type-specific and objective-driven — they encode *what to ask*, *about whom*, and *how often*.
 
+### Template Types
+
+Templates are one of two kinds:
+
+| Type | Purpose |
+|------|---------|
+| `entity_type_discovery` | Find which concrete entities are currently relevant for a given `EntityType`. Typically omits `targetEntityIds` — the point is to discover who matters, not to query known entities. |
+| `entity_monitoring` | Track entities already in the tracked set. Typically uses `targetEntityIds` to scope queries to known entities. |
+
+**Intended flow:** `entity_type_discovery` → surfaces relevant entities → those entities are added to the tracked set → `entity_monitoring` queries run against them.
+
+### Fields
+
 `domainAllowlist` is per-template, not per entity type. Some templates for the same entity type use it for precision (e.g., restrict to official government domains); others omit it for broader discovery. There is no denylist.
 
 | Field | Type | Required | Notes |
 |-------|------|----------|-------|
 | `id` | `string` | ✓ | Stable kebab-case slug |
 | `name` | `string` | ✓ | Human-readable label |
+| `templateType` | `QueryTemplateType` | ✓ | `entity_type_discovery` or `entity_monitoring` |
 | `entityTypes` | `EntityType[]` | ✓ | min 1; which entity types this template targets |
-| `targetEntityIds` | `string[]` | — | Pin to specific entities; if omitted, applies to all entities of `entityTypes` |
+| `targetEntityIds` | `string[]` | — | Pin to specific entities; discovery templates usually omit this |
 | `objective` | `Objective` | ✓ | `positions`, `priorities`, or `activities` |
 | `topics` | `string[]` | — | Topic scope; if omitted, the query is topic-agnostic |
 | `queryPattern` | `string` | ✓ | Query string; may use placeholders (e.g. `{entity}`, `{topic}`) resolved at run time |

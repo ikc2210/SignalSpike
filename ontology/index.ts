@@ -29,12 +29,13 @@ export {
 // Query ontology
 // ---------------------------------------------------------------------------
 
-export type { Objective, Cadence, QueryTemplate } from './query.types.js';
-export { OBJECTIVES, CADENCES } from './query.types.js';
+export type { QueryTemplateType, Objective, Cadence, QueryTemplate } from './query.types.js';
+export { QUERY_TEMPLATE_TYPES, OBJECTIVES, CADENCES } from './query.types.js';
 
 export type { ValidatedQueryTemplate } from './query.schema.js';
 export {
   queryTemplateSchema,
+  queryTemplateTypeSchema,
   objectiveSchema,
   cadenceSchema,
   validateQueryTemplate,

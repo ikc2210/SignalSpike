@@ -1,10 +1,12 @@
 import { z } from 'zod';
 import { entityTypeSchema } from './schema.js';
-import { OBJECTIVES, CADENCES } from './query.types.js';
+import { QUERY_TEMPLATE_TYPES, OBJECTIVES, CADENCES } from './query.types.js';
 
 // ---------------------------------------------------------------------------
 // Primitive schemas
 // ---------------------------------------------------------------------------
+
+export const queryTemplateTypeSchema = z.enum(QUERY_TEMPLATE_TYPES);
 
 export const objectiveSchema = z.enum(OBJECTIVES);
 
@@ -20,6 +22,8 @@ export const queryTemplateSchema = z.object({
   id: idSchema,
 
   name: z.string().min(1).max(200),
+
+  templateType: queryTemplateTypeSchema,
 
   entityTypes: z
     .array(entityTypeSchema)

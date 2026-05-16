@@ -1,6 +1,24 @@
 import type { EntityType } from './types.js';
 
 // ---------------------------------------------------------------------------
+// QueryTemplateType — the purpose of the template
+//
+// entity_type_discovery: find which concrete entities are currently relevant
+//   for a given EntityType. Output feeds the tracked entity set.
+// entity_monitoring: track entities already in the tracked set.
+//   Typically uses targetEntityIds; discovery templates usually omit it.
+//
+// Intended flow: entity_type_discovery → relevant entities → entity_monitoring
+// ---------------------------------------------------------------------------
+
+export const QUERY_TEMPLATE_TYPES = [
+  'entity_type_discovery',
+  'entity_monitoring',
+] as const;
+
+export type QueryTemplateType = (typeof QUERY_TEMPLATE_TYPES)[number];
+
+// ---------------------------------------------------------------------------
 // Objective — what the query is designed to surface
 // ---------------------------------------------------------------------------
 
@@ -38,6 +56,8 @@ export interface QueryTemplate {
   id: string;
 
   name: string;
+
+  templateType: QueryTemplateType;
 
   /** Entity types this template applies to; at least one required */
   entityTypes: [EntityType, ...EntityType[]];
