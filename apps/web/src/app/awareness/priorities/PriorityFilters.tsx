@@ -1,0 +1,119 @@
+'use client';
+
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
+import { useCallback, useTransition } from 'react';
+
+interface FilterOption {
+  value: string;
+  label: string;
+}
+
+interface PriorityFiltersProps {
+  entities: FilterOption[];
+  jurisdictions: string[];
+  topics: string[];
+  lastUpdated: Date | null;
+}
+
+const DIRECTIONS = ['rising', 'falling', 'stable'];
+
+export function PriorityFilters({
+  entities,
+  jurisdictions,
+  topics,
+  lastUpdated,
+}: PriorityFiltersProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const [isPending, startTransition] = useTransition();
+
+  const updateParam = useCallback(
+    (key: string, value: string) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (value) {
+        params.set(key, value);
+      } else {
+        params.delete(key);
+      }
+      startTransition(() => {
+        router.push(`${pathname}?${params.toString()}`);
+      });
+    },
+    [router, pathname, searchParams],
+  );
+
+  const select = (key: string) => ({
+    value: searchParams.get(key) ?? '',
+    onChange: (e: React.ChangeEvent<HTMLSelectElement>) => updateParam(key, e.target.value),
+    className:
+      'rounded border border-gray-200 bg-white px-2 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-gray-400',
+  });
+
+  return (
+    <div
+      className={`flex flex-wrap items-center gap-3 ${isPending ? 'opacity-60' : ''} transition-opacity`}
+    >
+      <select {...select('entity')}>
+        <option value="">All entities</option>
+        {entities.map((e) => (
+          <option key={e.value} value={e.value}>
+            {e.label}
+          </option>
+        ))}
+      </select>
+
+      <input
+        type="date"
+        value={searchParams.get('from') ?? ''}
+        onChange={(e) => updateParam('from', e.target.value)}
+        className="rounded border border-gray-200 bg-white px-2 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-gray-400"
+      />
+      <input
+        type="date"
+        value={searchParams.get('to') ?? ''}
+        onChange={(e) => updateParam('to', e.target.value)}
+        className="rounded border border-gray-200 bg-white px-2 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-gray-400"
+      />
+
+      <select {...select('jurisdiction')}>
+        <option value="">All jurisdictions</option>
+        {jurisdictions.map((j) => (
+          <option key={j} value={j}>
+            {j}
+          </option>
+        ))}
+      </select>
+
+      <select {...select('topic')}>
+        <option value="">All topics</option>
+        {topics.map((t) => (
+          <option key={t} value={t}>
+            {t}
+          </option>
+        ))}
+      </select>
+
+      <select {...select('direction')}>
+        <option value="">All directions</option>
+        {DIRECTIONS.map((d) => (
+          <option key={d} value={d}>
+            {d.charAt(0).toUpperCase() + d.slice(1)}
+          </option>
+        ))}
+      </select>
+
+      {lastUpdated && (
+        <span className="ml-auto text-xs text-gray-400">
+          Last signal:{' '}
+          {lastUpdated.toLocaleString(undefined, {
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+          })}
+        </span>
+      )}
+    </div>
+  );
+}

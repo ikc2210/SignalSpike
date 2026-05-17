@@ -59,3 +59,24 @@ export async function rejectEntity(id: string, _formData: FormData): Promise<voi
   });
   revalidatePath('/entities');
 }
+
+export async function saveUserProfile(_prevState: unknown, formData: FormData): Promise<{ saved: boolean }> {
+  await prisma.userProfile.upsert({
+    where: { id: 'singleton' },
+    create: {
+      id: 'singleton',
+      role: formData.get('role') as string || null,
+      entity: formData.get('entity') as string || null,
+      entityType: formData.get('entityType') as string || null,
+      primaryRemit: formData.get('primaryRemit') as string || null,
+    },
+    update: {
+      role: formData.get('role') as string || null,
+      entity: formData.get('entity') as string || null,
+      entityType: formData.get('entityType') as string || null,
+      primaryRemit: formData.get('primaryRemit') as string || null,
+    },
+  });
+  revalidatePath('/settings/profile');
+  return { saved: true };
+}

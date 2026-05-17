@@ -5,9 +5,7 @@ import {
   SIGNAL_TYPES,
   STANCES,
   PRIORITY_DIRECTIONS,
-  safeValidateSignal,
 } from '@perplexity/ontology';
-import type { EntityType } from '@perplexity/ontology';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -23,7 +21,7 @@ export interface SignalExtractionContext {
 
 // Raw output from the Claude tool call — all semantic fields optional so that
 // partial extraction still yields a valid base signal.
-interface ExtractionResult {
+export interface ExtractionResult {
   signalType?: string;
   title?: string;
   summary?: string;
@@ -50,6 +48,26 @@ interface ExtractionResult {
   details?: Record<string, unknown>;
 }
 
+// The shape buildPrefill returns — exported for testing
+export interface SignalPrefill {
+  runId: string;
+  runFindingId: string;
+  entityId: string;
+  entityType: string;
+  queryTemplateId: string;
+  templateType: string;
+  objective: string;
+  sourceUrls: string[];
+  sourceDomains: string[];
+  topicTags: string[];
+  jurisdictionTags: string[];
+  observedAt: Date;
+  title: string;
+  summary: string;
+  importance: number;
+  confidence: number;
+}
+
 // ---------------------------------------------------------------------------
 // Claude client (singleton)
 // ---------------------------------------------------------------------------
@@ -61,6 +79,11 @@ function getClient(): Anthropic {
     _client = new Anthropic({ apiKey: process.env['ANTHROPIC_API_KEY'] });
   }
   return _client;
+}
+
+// Exported only for test injection — do not call in production code.
+export function _setClientForTest(client: Anthropic): void {
+  _client = client;
 }
 
 // ---------------------------------------------------------------------------
@@ -113,7 +136,6 @@ const CLASSIFY_SIGNAL_TOOL: Anthropic.Tool = {
         items: { type: 'string' },
         description: 'ISO 3166 codes, regional codes (EU), or "global".',
       },
-      // activities
       changeType: {
         type: 'string',
         description: '[activities] Short label for the type of change (e.g. "regulatory proposal", "product launch").',
@@ -127,7 +149,6 @@ const CLASSIFY_SIGNAL_TOOL: Anthropic.Tool = {
         items: { type: 'string' },
         description: '[activities] Named entities mentioned as participants or targets.',
       },
-      // positions
       topic: {
         type: 'string',
         description: '[positions] The specific policy topic the entity is taking a position on.',
@@ -139,7 +160,7 @@ const CLASSIFY_SIGNAL_TOOL: Anthropic.Tool = {
       stance: {
         type: 'string',
         enum: [...STANCES],
-        description: '[positions] The entity\'s stance on the topic.',
+        description: "[positions] The entity's stance on the topic.",
       },
       strength: {
         type: 'integer',
@@ -152,7 +173,6 @@ const CLASSIFY_SIGNAL_TOOL: Anthropic.Tool = {
         items: { type: 'string' },
         description: '[positions] Direct quotes or close paraphrases supporting the stance.',
       },
-      // priorities
       priorityLabel: {
         type: 'string',
         description: '[priorities] Short label for the priority area (e.g. "AI safety evals").',
@@ -172,7 +192,6 @@ const CLASSIFY_SIGNAL_TOOL: Anthropic.Tool = {
         type: 'string',
         description: '[priorities] Evidence-based reasoning for why this counts as a priority shift.',
       },
-      // entity-type details
       details: {
         type: 'object',
         description:
@@ -203,32 +222,25 @@ Scoring guidance:
 - importance (1–100): weight by the signal's relevance to AI policy practitioners. Major rulemaking or frontier capability releases = 70–100. Routine filings or minor updates = 10–30.
 - confidence (1–100): reflect how clearly the finding supports your classification. Direct quote from primary source = 80–100. Inferred from indirect evidence = 20–50.
 
-Always fill title, summary, importance, and confidence. Fill objective-specific and details fields only when the information is clearly present in the finding.`;
+Always fill title, summary, importance, confidence, topicTags, and jurisdictionTags.
+
+Objective-specific fields — you MUST populate all of these for the objective stated in the user prompt:
+- activities → changeType (required), eventDate (if determinable), actorsMentioned
+- positions → topic (required: the specific policy topic), positionLabel (required: ≤10-word label for the position), stance (required: support/oppose/mixed/unclear/monitoring), strength (required: 1–5), evidenceSnippets (required: pull direct quotes or close paraphrases from the finding)
+- priorities → priorityLabel (required), priorityDirection (required: rising/stable/falling), momentum (required: 1–5), rationale (required)
+
+For positions: if the finding describes the entity's view on multiple topics, classify the single most policy-relevant one.
+Fill entity-type-specific details fields only when the information is clearly present.`;
 
 // ---------------------------------------------------------------------------
-// Deterministic prefill — derived from run/template/entity metadata only
+// Deterministic prefill — derived from run/template/entity metadata only.
+// Never fails — always produces a valid base to fall back to.
 // ---------------------------------------------------------------------------
 
-function buildPrefill(ctx: SignalExtractionContext): {
-  runId: string;
-  runFindingId: string;
-  entityId: string;
-  entityType: string;
-  queryTemplateId: string;
-  templateType: string;
-  objective: string;
-  sourceUrls: string[];
-  sourceDomains: string[];
-  topicTags: string[];
-  jurisdictionTags: string[];
-  observedAt: Date;
-  // fallback semantic values overridden by extraction
-  title: string;
-  summary: string;
-  importance: number;
-  confidence: number;
-} {
+export function buildPrefill(ctx: SignalExtractionContext): SignalPrefill {
   const { run, template, entity, finding, sources } = ctx;
+
+  const rawTitle = finding.summary.slice(0, 150).replace(/\n/g, ' ').trim();
 
   return {
     runId: run.id,
@@ -242,9 +254,11 @@ function buildPrefill(ctx: SignalExtractionContext): {
     sourceDomains: sources.map((s) => s.domain).filter((d): d is string => d !== null),
     topicTags: finding.topics.length > 0 ? finding.topics : template.topics,
     jurisdictionTags: entity.jurisdictions,
-    observedAt: run.completedAt ?? run.createdAt,
-    title: finding.summary.slice(0, 150).replace(/\n/g, ' '),
-    summary: finding.summary.slice(0, 500),
+    // finding.createdAt is set by Prisma immediately after Perplexity returns —
+    // more accurate than run.completedAt which is set after extraction finishes.
+    observedAt: finding.createdAt,
+    title: rawTitle || `${entity.name} — ${template.objective} signal`,
+    summary: finding.summary.slice(0, 500) || '(no summary available)',
     importance: 50,
     confidence: 50,
   };
@@ -254,32 +268,48 @@ function buildPrefill(ctx: SignalExtractionContext): {
 // User prompt — carries the finding content and extraction context
 // ---------------------------------------------------------------------------
 
+function buildObjectiveInstructions(objective: string): string {
+  switch (objective) {
+    case 'activities':
+      return 'Populate: changeType (what kind of action/event?), eventDate (YYYY-MM-DD if stated), actorsMentioned.';
+    case 'positions':
+      return 'Populate: topic (what policy topic is the entity taking a position on?), positionLabel (≤10-word label, e.g. "supports mandatory pre-deployment safety evals"), stance (support/oppose/mixed/unclear/monitoring), strength (1–5, where 5 = explicitly committed), evidenceSnippets (copy direct quotes or close paraphrases from the finding text that reveal the stance — include at least one if any exist).';
+    case 'priorities':
+      return 'Populate: priorityLabel (short label for the priority area), priorityDirection (rising/stable/falling), momentum (1–5), rationale (why does this finding indicate a priority shift?).';
+    default:
+      return '';
+  }
+}
+
 function buildUserPrompt(ctx: SignalExtractionContext): string {
   const { template, entity, finding } = ctx;
-
   const detailsGuide = entityTypeDetailsGuide(entity.entityType);
+  const objectiveInstructions = buildObjectiveInstructions(template.objective);
 
   return `Entity: ${entity.name} (${entity.entityType})
-Template objective: ${template.objective}
+Objective: ${template.objective}
 Topics in scope: ${template.topics.join(', ') || 'general'}
 Jurisdictions: ${entity.jurisdictions.join(', ')}
 
-${detailsGuide ? `For the details field, this is a ${entity.entityType} entity — relevant fields: ${detailsGuide}\n\n` : ''}Finding summary:
+${objectiveInstructions}
+${detailsGuide ? `\nFor the details field, relevant fields for ${entity.entityType}: ${detailsGuide}` : ''}
+
+Finding:
 ${finding.summary}`;
 }
 
 function entityTypeDetailsGuide(entityType: string): string {
   const guides: Record<string, string> = {
-    national_legislature: 'billNumber, committee, legislativeStage',
-    executive_body: 'instrumentType, issuingOffice, implementationStatus',
+    national_legislature:    'billNumber, committee, legislativeStage',
+    executive_body:          'instrumentType, issuingOffice, implementationStatus',
     cross_cutting_regulator: 'docketNumber, enforcementType, proceedingStage',
-    sectoral_regulator: 'sector, guidanceType, approvalStatus',
-    court_tribunal: 'caseName, docketNumber, proceduralPosture',
+    sectoral_regulator:      'sector, guidanceType, approvalStatus',
+    court_tribunal:          'caseName, docketNumber, proceduralPosture',
     international_organization: 'negotiationTrack, instrumentStatus, workingGroup',
-    frontier_developer: 'modelName, releaseType, deploymentScope',
-    compute_infra_provider: 'productName, infraType, exportControlHook',
-    standards_body: 'standardNumber, draftStage, commentWindow',
-    safety_institute: 'evaluationFramework, benchmarkName, partnerOrganizations',
+    frontier_developer:      'modelName, releaseType, deploymentScope',
+    compute_infra_provider:  'productName, infraType, exportControlHook',
+    standards_body:          'standardNumber, draftStage, commentWindow',
+    safety_institute:        'evaluationFramework, benchmarkName, partnerOrganizations',
   };
   return guides[entityType] ?? '';
 }
@@ -301,14 +331,10 @@ async function extractSemanticFields(ctx: SignalExtractionContext): Promise<Extr
         cache_control: { type: 'ephemeral' },
       },
     ],
-    messages: [
-      {
-        role: 'user',
-        content: buildUserPrompt(ctx),
-      },
-    ],
+    messages: [{ role: 'user', content: buildUserPrompt(ctx) }],
     tools: [CLASSIFY_SIGNAL_TOOL],
-    tool_choice: { type: 'any' },
+    // Force this specific tool — we always want structured output.
+    tool_choice: { type: 'tool', name: 'classify_signal' },
   });
 
   const toolUse = response.content.find((b): b is Anthropic.ToolUseBlock => b.type === 'tool_use');
@@ -321,10 +347,11 @@ async function extractSemanticFields(ctx: SignalExtractionContext): Promise<Extr
 
 // ---------------------------------------------------------------------------
 // Merge prefill + extraction → Prisma create payload
+// Exported for unit testing.
 // ---------------------------------------------------------------------------
 
-function buildCreatePayload(
-  prefill: ReturnType<typeof buildPrefill>,
+export function buildCreatePayload(
+  prefill: SignalPrefill,
   extracted: ExtractionResult,
   objective: string,
 ) {
@@ -392,7 +419,7 @@ function buildDetails(
   return { entityType, ...raw };
 }
 
-function clamp(v: number | undefined, min: number, max: number): number {
+export function clamp(v: number | undefined, min: number, max: number): number {
   const n = typeof v === 'number' ? v : min;
   return Math.min(max, Math.max(min, Math.round(n)));
 }
@@ -404,58 +431,68 @@ function parseDate(s: string | undefined): Date | undefined {
 }
 
 // ---------------------------------------------------------------------------
+// Null-result detection
+// Perplexity sometimes returns a "I couldn't find/verify..." response when
+// the search yields nothing useful. These are not signals — suppress them.
+// ---------------------------------------------------------------------------
+
+const NULL_RESULT_PATTERNS = [
+  /^i couldn'?t (verify|find|identify|confirm|determine)/i,
+  /^i('?m| am) (sorry|not able|unable)/i,
+  /^i'?m not (fully sure|able)/i,
+  /^i (was unable|cannot|can'?t) (verify|find|identify|confirm|determine)/i,
+  /^based on the (information|search results|sources) (provided|available),?\s+i (couldn'?t|can'?t|was unable)/i,
+  /\bno (matching )?search results\b/i,
+  /\bsearch results (returned|are)\s+(none|empty)\b/i,
+  /\bsource:\s*no (matching )?search results/i,
+];
+
+function isNullFinding(summary: string): boolean {
+  const start = summary.slice(0, 400).trim();
+  return NULL_RESULT_PATTERNS.some((p) => p.test(start));
+}
+
+// ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
 /**
  * Extract a Signal from a completed RunFinding and persist it.
- * Returns the Signal id on success, null if the finding has no entity (discovery runs).
+ * Returns the Signal id on success, null if the finding has no entity (discovery
+ * runs) or if the finding is a null/empty Perplexity response.
  *
- * Extraction failures are non-fatal: if Claude fails or the output fails validation,
- * a Signal is still persisted using deterministic prefill values only.
+ * Extraction failures are non-fatal: if Claude fails, a Signal is still persisted
+ * using deterministic prefill values only. The RunFinding is never mutated or lost.
  */
 export async function extractAndPersistSignal(
   ctx: SignalExtractionContext,
 ): Promise<string | null> {
-  // Signal extraction only applies to entity-scoped (monitoring) runs
+  // Signal extraction only applies to entity-scoped (monitoring) runs.
   if (!ctx.run.entityId) return null;
+
+  // Suppress null/failed Perplexity responses — they carry no real signal.
+  if (isNullFinding(ctx.finding.summary)) {
+    console.log(
+      `[signal-extractor] null finding suppressed for finding ${ctx.finding.id} (entity: ${ctx.run.entityId})`,
+    );
+    return null;
+  }
 
   const prefill = buildPrefill(ctx);
   const objective = ctx.template.objective;
 
   let extracted: ExtractionResult = {};
-  let extractionFailed = false;
 
   try {
     extracted = await extractSemanticFields(ctx);
   } catch (err) {
-    extractionFailed = true;
     console.warn(
-      `[signal-extractor] semantic extraction failed for finding ${ctx.finding.id}:`,
+      `[signal-extractor] semantic extraction failed for finding ${ctx.finding.id} — persisting prefill-only signal:`,
       err instanceof Error ? err.message : String(err),
     );
   }
 
   const payload = buildCreatePayload(prefill, extracted, objective);
-
-  // Validate before persisting — fall back to prefill-only if the merged
-  // payload still fails (e.g. because extracted values are out of range).
-  const validation = safeValidateSignal({
-    ...payload,
-    id: 'placeholder', // not known until DB insert; validated shape only
-    extractedAt: new Date().toISOString().slice(0, 10),
-    observedAt: payload.observedAt.toISOString().slice(0, 10),
-    entityType: payload.entityType as EntityType,
-    signalType: payload.signalType ?? null,
-  });
-
-  if (!validation.success && !extractionFailed) {
-    console.warn(
-      `[signal-extractor] validation failed for finding ${ctx.finding.id}:`,
-      validation.error.flatten(),
-    );
-  }
-
   const signal = await prisma.signal.create({ data: payload });
   return signal.id;
 }

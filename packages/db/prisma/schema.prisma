@@ -175,3 +175,12 @@ model Schedule {
 
   template QueryTemplate @relation(fields: [templateId], references: [id])
 }
+
+model UserProfile {
+  id           String   @id @default("singleton")
+  role         String?
+  entity       String?
+  entityType   String?
+  primaryRemit String?
+  updatedAt    DateTime @updatedAt
+}

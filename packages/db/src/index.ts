@@ -9,4 +9,5 @@ export type {
   RunFinding,
   Signal,
   Schedule,
+  UserProfile,
 } from '@prisma/client';

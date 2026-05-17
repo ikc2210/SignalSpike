@@ -7,6 +7,12 @@ export const metadata: Metadata = {
   description: 'Monitor AI policy developments across entities and regulators',
 };
 
+const awarenessNavLinks = [
+  { href: '/awareness/activities', label: 'Activities' },
+  { href: '/awareness/positions', label: 'Positions' },
+  { href: '/awareness/priorities', label: 'Priorities' },
+];
+
 const mainNavLinks = [
   { href: '/entities', label: 'Entities' },
   { href: '/runs', label: 'Runs' },
@@ -33,18 +39,38 @@ export default function RootLayout({
             </span>
             <p className="mt-0.5 text-xs text-white/40">Monitor</p>
           </div>
-          <nav className="flex flex-col gap-1 px-3 py-4">
-            {mainNavLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="rounded px-3 py-2 text-sm text-white/70 transition-colors hover:bg-white/10 hover:text-white"
-              >
-                {link.label}
-              </Link>
-            ))}
+          <nav className="flex flex-1 flex-col gap-1 px-3 py-4">
+            <div className="mb-1">
+              <p className="px-3 pb-1 text-xs font-semibold uppercase tracking-wider text-white/30">
+                Awareness
+              </p>
+              {awarenessNavLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className="block rounded px-3 py-2 text-sm text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </div>
 
-            <div className="mt-4">
+            <div className="mt-2">
+              <p className="px-3 pb-1 text-xs font-semibold uppercase tracking-wider text-white/30">
+                Data
+              </p>
+              {mainNavLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className="block rounded px-3 py-2 text-sm text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </div>
+
+            <div className="mt-2">
               <p className="px-3 pb-1 text-xs font-semibold uppercase tracking-wider text-white/30">
                 Settings
               </p>
@@ -57,6 +83,14 @@ export default function RootLayout({
                   {link.label}
                 </Link>
               ))}
+            </div>
+            <div className="mt-auto pt-4 border-t border-white/10">
+              <Link
+                href="/report"
+                className="block rounded px-3 py-2.5 text-xs font-semibold uppercase tracking-widest text-white/50 transition-colors hover:bg-white/10 hover:text-white"
+              >
+                Generate Briefing
+              </Link>
             </div>
           </nav>
         </aside>
