@@ -1,6 +1,6 @@
 # SignalSpike: An AI Policy Monitor
 
-A full-stack intelligence platform that automatically monitors AI policy developments across governments, regulators, courts, and frontier developers — and surfaces what matters through a structured signal feed.
+A full-stack intelligence platform that automatically monitors AI policy developments across governments, regulators, courts, and frontier developers; ultimately surfacing what matters for a personalized user through a structured signal feed.
 
 ---
 
@@ -18,7 +18,7 @@ Results are ordered by a simple rule-based relevance score derived from the user
 
 ---
 
-## Architecture
+## System Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -68,11 +68,11 @@ Results are ordered by a simple rule-based relevance score derived from the user
 
 ### 1. Discovery runs
 
-An `entity_type_discovery` query template (e.g. "Which frontier AI labs are currently most active in policy?") is run against Perplexity. The response text is parsed with regex to extract entity names — specifically looking for bold names in numbered or bulleted lists, which is the format the query prompt requests. Each extracted name is matched against existing entities and aliases; unmatched names are created as new `Entity` records with `approvalState: 'proposed'`.
+An `entity_type_discovery` query template (e.g. "Which frontier AI labs are currently most active in policy?") is run against Perplexity. The response text is parsed with regex to extract entity names — specifically looking for bold names in numbered or bulleted lists, which is the format the query prompt requests. For instance, entity names could look like: "Google Deepmind," "OpenAI," and "Anthropic". Each extracted name is matched against existing entities and aliases; unmatched names are created as new `Entity` records with `approvalState: 'proposed'`.
 
 ### 2. Entity approval
 
-A human reviews proposed entities at `/entities` and approves or rejects them. Approving an entity automatically enqueues monitoring runs for all active templates matching its entity type.
+The user can review proposed entities at `/entities` and approves or rejects them. Approving an entity automatically enqueues monitoring runs for all active templates matching its entity type.
 
 ### 3. Monitoring runs
 
