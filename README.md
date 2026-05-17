@@ -1,4 +1,4 @@
-# AI Policy Monitor
+# SignalSpike: An AI Policy Monitor
 
 A full-stack intelligence platform that automatically monitors AI policy developments across governments, regulators, courts, and frontier developers — and surfaces what matters through a structured signal feed.
 
