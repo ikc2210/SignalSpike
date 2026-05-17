@@ -7,5 +7,6 @@ export type {
   MonitoringRun,
   RunSource,
   RunFinding,
+  Signal,
   Schedule,
 } from '@prisma/client';

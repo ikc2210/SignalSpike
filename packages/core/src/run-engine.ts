@@ -2,6 +2,7 @@ import { prisma } from '@perplexity/db';
 import { createPerplexityClient } from '@perplexity/provider-perplexity';
 import { expandQueryPattern } from './template-expander.js';
 import { enqueueRun } from './queue.js';
+import { extractAndPersistSignal } from './signal-extractor.js';
 
 export async function executeRun(templateId: string, entityId?: string): Promise<string> {
   const template = await prisma.queryTemplate.findUniqueOrThrow({ where: { id: templateId } });
@@ -40,7 +41,7 @@ export async function executeRun(templateId: string, entityId?: string): Promise
     }
 
     // Persist finding
-    await prisma.runFinding.create({
+    const finding = await prisma.runFinding.create({
       data: {
         runId: run.id,
         entityId: entityId ?? null,
@@ -52,6 +53,18 @@ export async function executeRun(templateId: string, entityId?: string): Promise
     // For discovery templates: process discovered entities
     if (template.templateType === 'entity_type_discovery') {
       await processDiscoveredEntities(run.id, template.entityTypes, result.content);
+    }
+
+    // For monitoring templates with a known entity: extract a normalized Signal
+    if (template.templateType === 'entity_monitoring' && entity) {
+      const sources = await prisma.runSource.findMany({ where: { runId: run.id } });
+      // Non-fatal: extraction failure is logged inside extractAndPersistSignal
+      await extractAndPersistSignal({ run, template, entity, finding, sources }).catch((err) => {
+        console.error(
+          `[run-engine] signal extraction threw for finding ${finding.id}:`,
+          err instanceof Error ? err.message : String(err),
+        );
+      });
     }
 
     await prisma.monitoringRun.update({
@@ -128,10 +141,6 @@ async function processDiscoveredEntities(
     });
 
     if (existing) {
-      // Run monitoring immediately for approved and proposed entities alike.
-      // Proposed entities won't appear in future scheduled/manual monitoring runs
-      // (those filter to approved-only) but get an initial run so the user has
-      // data to inform their approval decision.
       if (existing.approvalState !== 'rejected') {
         await Promise.all(monitoringTemplates.map((t) => enqueueRun(t.id, existing.id)));
       }
@@ -149,7 +158,6 @@ async function processDiscoveredEntities(
         discoveredBy: runId,
       },
     });
-    // Same logic: run immediately so the user can evaluate before approving.
     await Promise.all(monitoringTemplates.map((t) => enqueueRun(t.id, newEntity.id)));
   }
 }

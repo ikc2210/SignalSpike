@@ -5,7 +5,9 @@
   "exports": { ".": "./src/index.ts" },
   "scripts": { "typecheck": "tsc --noEmit" },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.55.0",
     "@perplexity/db": "workspace:*",
+    "@perplexity/ontology": "workspace:*",
     "@perplexity/provider-perplexity": "workspace:*",
     "bullmq": "^5.12.0",
     "ioredis": "^5.4.1"

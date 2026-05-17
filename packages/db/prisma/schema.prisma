@@ -45,6 +45,7 @@ model Entity {
   aliases  EntityAlias[]
   runs     MonitoringRun[]
   findings RunFinding[]
+  signals  Signal[]
 }
 
 model EntityAlias {
@@ -74,6 +75,7 @@ model MonitoringRun {
   entity   Entity?       @relation(fields: [entityId], references: [id])
   sources  RunSource[]
   findings RunFinding[]
+  signals  Signal[]
 }
 
 model RunSource {
@@ -99,11 +101,66 @@ model RunFinding {
   topics     String[]
   createdAt  DateTime @default(now())
 
-  run    MonitoringRun @relation(fields: [runId], references: [id], onDelete: Cascade)
-  entity Entity?       @relation(fields: [entityId], references: [id])
+  run     MonitoringRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  entity  Entity?       @relation(fields: [entityId], references: [id])
+  signals Signal[]
 
   @@index([runId])
   @@index([entityId])
+}
+
+model Signal {
+  id               String   @id @default(cuid())
+  runId            String
+  runFindingId     String
+  entityId         String
+  entityType       String
+  queryTemplateId  String
+  templateType     String
+  objective        String   // activities | positions | priorities
+  signalType       String?
+  title            String
+  summary          String
+  sourceUrls       String[]
+  sourceDomains    String[]
+  topicTags        String[]
+  jurisdictionTags String[]
+  observedAt       DateTime
+  extractedAt      DateTime @default(now())
+  importance       Int
+  confidence       Int
+
+  // ActivitySignal fields
+  changeType      String?
+  eventDate       DateTime?
+  actorsMentioned String[]
+
+  // PositionSignal fields
+  topic            String?
+  positionLabel    String?
+  stance           String?
+  strength         Int?
+  evidenceSnippets String[]
+
+  // PrioritySignal fields
+  priorityLabel       String?
+  priorityDirection   String?
+  momentum            Int?
+  rationale           String?
+  supportingSignalIds String[]
+
+  // EntityType-specific details (JSON)
+  details Json?
+
+  run        MonitoringRun @relation(fields: [runId], references: [id])
+  runFinding RunFinding    @relation(fields: [runFindingId], references: [id], onDelete: Cascade)
+  entity     Entity        @relation(fields: [entityId], references: [id])
+
+  @@index([runId])
+  @@index([runFindingId])
+  @@index([entityId])
+  @@index([objective])
+  @@index([observedAt])
 }
 
 model Schedule {

@@ -51,11 +51,25 @@ export type {
   SignalType,
   SignalFamily,
   Stance,
-  LegalStatus,
-  EffortLevel,
-  SignalPosition,
+  PriorityDirection,
+  // Entity-type detail interfaces
+  NationalLegislatureDetails,
+  ExecutiveBodyDetails,
+  CrossCuttingRegulatorDetails,
+  SectoralRegulatorDetails,
+  CourtTribunalDetails,
+  InternationalOrganizationDetails,
+  FrontierDeveloperDetails,
+  ComputeInfraProviderDetails,
+  StandardsBodyDetails,
+  SafetyInstituteDetails,
+  EntityTypeDetails,
+  // Signal interfaces
+  BaseSignal,
+  ActivitySignal,
+  PositionSignal,
+  PrioritySignal,
   Signal,
-  SignalActor,
 } from './signal.types.js';
 
 export {
@@ -69,24 +83,26 @@ export {
   PERSONNEL_SIGNAL_TYPES,
   OPERATIONAL_SIGNAL_TYPES,
   STANCES,
-  LEGAL_STATUSES,
+  PRIORITY_DIRECTIONS,
 } from './signal.types.js';
 
 export type {
   ValidatedSignal,
-  ValidatedSignalPosition,
-  ValidatedSignalActor,
+  ValidatedActivitySignal,
+  ValidatedPositionSignal,
+  ValidatedPrioritySignal,
+  ValidatedEntityTypeDetails,
 } from './signal.schema.js';
 
 export {
   signalSchema,
-  signalPositionSchema,
-  signalActorSchema,
+  activitySignalSchema,
+  positionSignalSchema,
+  prioritySignalSchema,
+  entityTypeDetailsSchema,
   signalTypeSchema,
   stanceSchema,
-  legalStatusSchema,
-  effortLevelSchema,
-  actorWeightSchema,
+  priorityDirectionSchema,
   validateSignal,
   safeValidateSignal,
   validateSignalBatch,

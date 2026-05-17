@@ -1,4 +1,5 @@
-import type { Layer, Role } from './types.js';
+import type { EntityType } from './types.js';
+import type { QueryTemplateType, Objective } from './query.types.js';
 
 // ---------------------------------------------------------------------------
 // Signal Families — grouping dimension for display and filtering
@@ -16,7 +17,7 @@ export const SIGNAL_FAMILIES = [
 export type SignalFamily = (typeof SIGNAL_FAMILIES)[number];
 
 // ---------------------------------------------------------------------------
-// Signal Types — organized by family; exported individually for filtering
+// Signal Types — organized by family
 // ---------------------------------------------------------------------------
 
 export const PUBLICATION_SIGNAL_TYPES = [
@@ -91,7 +92,6 @@ export const SIGNAL_TYPES = [
 
 export type SignalType = (typeof SIGNAL_TYPES)[number];
 
-// Lookup: SignalType → SignalFamily (useful for grouping queries)
 export const SIGNAL_TYPE_FAMILY: Record<SignalType, SignalFamily> = {
   strategy_published:               'publication',
   guidance_issued:                  'publication',
@@ -144,7 +144,7 @@ export const SIGNAL_TYPE_FAMILY: Record<SignalType, SignalFamily> = {
 };
 
 // ---------------------------------------------------------------------------
-// Stance — for SignalPosition
+// Stance — used by PositionSignal
 // ---------------------------------------------------------------------------
 
 export const STANCES = [
@@ -158,146 +158,180 @@ export const STANCES = [
 export type Stance = (typeof STANCES)[number];
 
 // ---------------------------------------------------------------------------
-// Legal Status
+// Priority Direction — used by PrioritySignal
 // ---------------------------------------------------------------------------
 
-export const LEGAL_STATUSES = [
-  'draft',
-  'proposed',
-  'final',
-  'effective',
-  'litigation',
-  'voluntary',
-] as const;
-
-export type LegalStatus = (typeof LEGAL_STATUSES)[number];
+export const PRIORITY_DIRECTIONS = ['rising', 'stable', 'falling'] as const;
+export type PriorityDirection = (typeof PRIORITY_DIRECTIONS)[number];
 
 // ---------------------------------------------------------------------------
-// Effort Level
-// Intrinsic property of the signal: how much commitment or effort did this
-// action likely require from the entity?
-// 1 = very light  →  5 = very high-effort / high-commitment
+// Entity-type-specific detail interfaces
+// Discriminated by entityType. All fields optional — omit if not applicable.
 // ---------------------------------------------------------------------------
 
-export type EffortLevel = 1 | 2 | 3 | 4 | 5;
-
-// ---------------------------------------------------------------------------
-// SignalPosition — an entity's stance on a topic, attached to a Signal
-//
-// Positions are signal-scoped. For a given entity × topic, the current
-// position is derived from recent, high-confidence position-bearing Signals.
-// ---------------------------------------------------------------------------
-
-export interface SignalPosition {
-  /** Policy topic or concept (e.g. "frontier model thresholds") */
-  topic: string;
-
-  stance: Stance;
-
-  /**
-   * explicit = source directly states the entity's position
-   * implicit = position inferred from operational behavior or pattern of actions
-   */
-  evidence: 'explicit' | 'implicit';
-
-  quoteOrParaphrase?: string;
+export interface NationalLegislatureDetails {
+  entityType: 'national_legislature';
+  billNumber?: string;
+  committee?: string;
+  legislativeStage?: string;
 }
 
+export interface ExecutiveBodyDetails {
+  entityType: 'executive_body';
+  instrumentType?: string;
+  issuingOffice?: string;
+  implementationStatus?: string;
+}
+
+export interface CrossCuttingRegulatorDetails {
+  entityType: 'cross_cutting_regulator';
+  docketNumber?: string;
+  enforcementType?: string;
+  proceedingStage?: string;
+}
+
+export interface SectoralRegulatorDetails {
+  entityType: 'sectoral_regulator';
+  sector?: string;
+  guidanceType?: string;
+  approvalStatus?: string;
+}
+
+export interface CourtTribunalDetails {
+  entityType: 'court_tribunal';
+  caseName?: string;
+  docketNumber?: string;
+  proceduralPosture?: string;
+}
+
+export interface InternationalOrganizationDetails {
+  entityType: 'international_organization';
+  negotiationTrack?: string;
+  instrumentStatus?: string;
+  workingGroup?: string;
+}
+
+export interface FrontierDeveloperDetails {
+  entityType: 'frontier_developer';
+  modelName?: string;
+  releaseType?: string;
+  deploymentScope?: string;
+}
+
+export interface ComputeInfraProviderDetails {
+  entityType: 'compute_infra_provider';
+  productName?: string;
+  infraType?: string;
+  exportControlHook?: string;
+}
+
+export interface StandardsBodyDetails {
+  entityType: 'standards_body';
+  standardNumber?: string;
+  draftStage?: string;
+  commentWindow?: string;
+}
+
+export interface SafetyInstituteDetails {
+  entityType: 'safety_institute';
+  evaluationFramework?: string;
+  benchmarkName?: string;
+  partnerOrganizations?: string[];
+}
+
+export type EntityTypeDetails =
+  | NationalLegislatureDetails
+  | ExecutiveBodyDetails
+  | CrossCuttingRegulatorDetails
+  | SectoralRegulatorDetails
+  | CourtTribunalDetails
+  | InternationalOrganizationDetails
+  | FrontierDeveloperDetails
+  | ComputeInfraProviderDetails
+  | StandardsBodyDetails
+  | SafetyInstituteDetails;
+
 // ---------------------------------------------------------------------------
-// Signal — the atomic unit of policy activity
+// BaseSignal — fields shared by all Signal variants
 // ---------------------------------------------------------------------------
 
-export interface Signal {
-  /** Stable kebab-case identifier */
+export interface BaseSignal {
   id: string;
-
-  title: string;
-
-  summary: string;
-
-  signalType: SignalType;
-
-  /** ISO 8601 date the signal was observed or collected */
-  dateObserved: string;
-
-  /** ISO 8601 date the underlying event occurred, if different from dateObserved */
-  eventDate?: string;
-
-  /** ISO 8601 date the action becomes or became legally effective */
-  effectiveDate?: string;
-
-  /** ISO 3166 code, regional code ("EU"), or "global" */
-  jurisdiction: string;
-
-  sectors: [string, ...string[]];
-
-  topics: [string, ...string[]];
-
-  layers: [Layer, ...Layer[]];
-
-  roles: [Role, ...Role[]];
-
-  /** Citation/source record IDs; at least one required */
-  sourceIds: [string, ...string[]];
-
-  /** The single entity most responsible for or most affected by this signal */
-  primaryEntityId: string;
-
-  /** Additional entities involved; use SignalActor for richer role/layer data */
-  relatedEntityIds: string[];
-
-  legalStatus?: LegalStatus;
-
-  /**
-   * Composite ranking score for UI sorting and filtering, 1–100.
-   * Answers: "How important is this signal for the dashboard user?"
-   * May incorporate entity priority, topic relevance, and effortLevel,
-   * but that computation is downstream logic — not defined here.
-   */
-  importanceScore: number;
-
-  /**
-   * How much effort or commitment did this signal likely require from the entity?
-   * Intrinsic to the signal; set at classification time.
-   * 1 = very light  2 = routine  3 = substantive  4 = major  5 = very high-commitment
-   */
-  effortLevel: EffortLevel;
-
-  /**
-   * Extraction certainty and evidence quality, 1–100.
-   * Answers: "How confident are we that this signal is correct and well-classified?"
-   * Reflects source reliability and classification clarity — independent of
-   * importance or effort.
-   */
-  confidenceScore: number;
-
-  /**
-   * Deterministic key for deduplication.
-   * Recommended composition: hash(signalType + primaryEntityId + eventDate + jurisdiction)
-   */
-  dedupeKey: string;
-
-  /** Structured position statements extracted from this signal */
-  positions?: SignalPosition[];
-}
-
-// ---------------------------------------------------------------------------
-// SignalActor — joins entities to signals with explicit role + layer context
-//
-// Required because one signal may involve multiple entities playing different
-// roles. The primary/relatedEntityIds on Signal are a lightweight reference;
-// SignalActor is the full relational record.
-// ---------------------------------------------------------------------------
-
-export interface SignalActor {
-  signalId: string;
-
+  runId: string;
+  runFindingId: string;
   entityId: string;
-
-  role: Role;
-
-  layer: Layer;
-
-  /** Optional 1–5 weight indicating this actor's relative centrality in the signal */
-  actorWeight?: number;
+  entityType: EntityType;
+  queryTemplateId: string;
+  templateType: QueryTemplateType;
+  objective: Objective;
+  signalType: SignalType | null;
+  title: string;
+  summary: string;
+  sourceUrls: string[];
+  sourceDomains: string[];
+  topicTags: string[];
+  jurisdictionTags: string[];
+  /** ISO 8601 — when the underlying event was observed or reported */
+  observedAt: string;
+  /** ISO 8601 — when this Signal record was extracted from the RunFinding */
+  extractedAt: string;
+  /** Composite ranking score for UI sorting, 1–100 */
+  importance: number;
+  /** Extraction certainty, 1–100 */
+  confidence: number;
+  details?: EntityTypeDetails;
 }
+
+// ---------------------------------------------------------------------------
+// ActivitySignal — what the entity did
+// ---------------------------------------------------------------------------
+
+export interface ActivitySignal extends BaseSignal {
+  objective: 'activities';
+  /** Short label for the type of change (e.g. "regulatory action", "product launch") */
+  changeType: string;
+  /** ISO 8601 date the event occurred, if determinable */
+  eventDate?: string;
+  /** Named parties mentioned as participants or targets */
+  actorsMentioned: string[];
+}
+
+// ---------------------------------------------------------------------------
+// PositionSignal — where the entity stands on a topic
+// ---------------------------------------------------------------------------
+
+export interface PositionSignal extends BaseSignal {
+  objective: 'positions';
+  /** The specific policy topic or concept (e.g. "frontier model thresholds") */
+  topic: string;
+  /** Short human-readable label for the position (e.g. "supports mandatory evals") */
+  positionLabel: string;
+  stance: Stance;
+  /** How strongly held: 1 = weakly signaled, 5 = explicitly committed */
+  strength: number;
+  /** Direct quotes or close paraphrases from the source supporting the stance */
+  evidenceSnippets: string[];
+}
+
+// ---------------------------------------------------------------------------
+// PrioritySignal — what the entity appears to be prioritizing
+// ---------------------------------------------------------------------------
+
+export interface PrioritySignal extends BaseSignal {
+  objective: 'priorities';
+  /** Short label for the priority area (e.g. "AI safety evals") */
+  priorityLabel: string;
+  priorityDirection: PriorityDirection;
+  /** Momentum of the priority shift: 1 = weak signal, 5 = strong/sustained pattern */
+  momentum: number;
+  /** Why this counts as a priority shift — evidence-based reasoning */
+  rationale: string;
+  /** IDs of other Signals that corroborate this priority assessment */
+  supportingSignalIds: string[];
+}
+
+// ---------------------------------------------------------------------------
+// Signal — discriminated union on objective
+// ---------------------------------------------------------------------------
+
+export type Signal = ActivitySignal | PositionSignal | PrioritySignal;

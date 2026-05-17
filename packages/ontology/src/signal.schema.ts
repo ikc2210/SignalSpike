@@ -1,139 +1,196 @@
 import { z } from 'zod';
-import { layerSchema, roleSchema } from './schema.js';
+import { entityTypeSchema } from './schema.js';
+import { queryTemplateTypeSchema } from './query.schema.js';
 import {
   SIGNAL_TYPES,
   STANCES,
-  LEGAL_STATUSES,
+  PRIORITY_DIRECTIONS,
 } from './signal.types.js';
 
 // ---------------------------------------------------------------------------
-// Primitive schemas
+// Primitive schemas — reusable across signal variants
 // ---------------------------------------------------------------------------
 
 export const signalTypeSchema = z.enum(SIGNAL_TYPES);
 
 export const stanceSchema = z.enum(STANCES);
 
-export const legalStatusSchema = z.enum(LEGAL_STATUSES);
+export const priorityDirectionSchema = z.enum(PRIORITY_DIRECTIONS);
 
-export const effortLevelSchema = z.union([
-  z.literal(1),
-  z.literal(2),
-  z.literal(3),
-  z.literal(4),
-  z.literal(5),
-]);
+const isoDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}/, 'must start with YYYY-MM-DD');
 
-export const actorWeightSchema = z.union([
-  z.literal(1),
-  z.literal(2),
-  z.literal(3),
-  z.literal(4),
-  z.literal(5),
-]);
-
-// Accepts YYYY-MM-DD and full ISO 8601 datetimes
-const isoDateSchema = z
-  .string()
-  .regex(/^\d{4}-\d{2}-\d{2}/, 'must start with YYYY-MM-DD');
-
-// importanceScore and confidenceScore are both 1–100 integers
 const score100Schema = z.number().int().min(1).max(100);
 
-const idSchema = z.string().min(1).max(128);
+const score5Schema = z.number().int().min(1).max(5);
 
 // ---------------------------------------------------------------------------
-// SignalPosition schema
+// Entity-type-specific detail schemas
+// Each discriminates on entityType; all domain fields are optional.
 // ---------------------------------------------------------------------------
 
-export const signalPositionSchema = z.object({
-  topic: z.string().min(1).max(200),
-  stance: stanceSchema,
-  evidence: z.enum(['explicit', 'implicit']),
-  quoteOrParaphrase: z.string().min(1).max(2000).optional(),
+export const nationalLegislatureDetailsSchema = z.object({
+  entityType: z.literal('national_legislature'),
+  billNumber: z.string().max(50).optional(),
+  committee: z.string().max(200).optional(),
+  legislativeStage: z.string().max(100).optional(),
 });
 
-export type ValidatedSignalPosition = z.infer<typeof signalPositionSchema>;
+export const executiveBodyDetailsSchema = z.object({
+  entityType: z.literal('executive_body'),
+  instrumentType: z.string().max(100).optional(),
+  issuingOffice: z.string().max(200).optional(),
+  implementationStatus: z.string().max(100).optional(),
+});
+
+export const crossCuttingRegulatorDetailsSchema = z.object({
+  entityType: z.literal('cross_cutting_regulator'),
+  docketNumber: z.string().max(100).optional(),
+  enforcementType: z.string().max(100).optional(),
+  proceedingStage: z.string().max(100).optional(),
+});
+
+export const sectoralRegulatorDetailsSchema = z.object({
+  entityType: z.literal('sectoral_regulator'),
+  sector: z.string().max(100).optional(),
+  guidanceType: z.string().max(100).optional(),
+  approvalStatus: z.string().max(100).optional(),
+});
+
+export const courtTribunalDetailsSchema = z.object({
+  entityType: z.literal('court_tribunal'),
+  caseName: z.string().max(300).optional(),
+  docketNumber: z.string().max(100).optional(),
+  proceduralPosture: z.string().max(100).optional(),
+});
+
+export const internationalOrganizationDetailsSchema = z.object({
+  entityType: z.literal('international_organization'),
+  negotiationTrack: z.string().max(200).optional(),
+  instrumentStatus: z.string().max(100).optional(),
+  workingGroup: z.string().max(200).optional(),
+});
+
+export const frontierDeveloperDetailsSchema = z.object({
+  entityType: z.literal('frontier_developer'),
+  modelName: z.string().max(100).optional(),
+  releaseType: z.string().max(100).optional(),
+  deploymentScope: z.string().max(200).optional(),
+});
+
+export const computeInfraProviderDetailsSchema = z.object({
+  entityType: z.literal('compute_infra_provider'),
+  productName: z.string().max(100).optional(),
+  infraType: z.string().max(100).optional(),
+  exportControlHook: z.string().max(200).optional(),
+});
+
+export const standardsBodyDetailsSchema = z.object({
+  entityType: z.literal('standards_body'),
+  standardNumber: z.string().max(50).optional(),
+  draftStage: z.string().max(100).optional(),
+  commentWindow: z.string().max(100).optional(),
+});
+
+export const safetyInstituteDetailsSchema = z.object({
+  entityType: z.literal('safety_institute'),
+  evaluationFramework: z.string().max(200).optional(),
+  benchmarkName: z.string().max(200).optional(),
+  partnerOrganizations: z.array(z.string().max(200)).optional(),
+});
+
+export const entityTypeDetailsSchema = z.discriminatedUnion('entityType', [
+  nationalLegislatureDetailsSchema,
+  executiveBodyDetailsSchema,
+  crossCuttingRegulatorDetailsSchema,
+  sectoralRegulatorDetailsSchema,
+  courtTribunalDetailsSchema,
+  internationalOrganizationDetailsSchema,
+  frontierDeveloperDetailsSchema,
+  computeInfraProviderDetailsSchema,
+  standardsBodyDetailsSchema,
+  safetyInstituteDetailsSchema,
+]);
+
+export type ValidatedEntityTypeDetails = z.infer<typeof entityTypeDetailsSchema>;
 
 // ---------------------------------------------------------------------------
-// Signal schema
+// Base signal fields — shared across all objective variants
 // ---------------------------------------------------------------------------
 
-export const signalSchema = z.object({
-  id: idSchema,
-
+const baseSignalFields = {
+  id: z.string().min(1).max(128),
+  runId: z.string().min(1),
+  runFindingId: z.string().min(1),
+  entityId: z.string().min(1),
+  entityType: entityTypeSchema,
+  queryTemplateId: z.string().min(1),
+  templateType: queryTemplateTypeSchema,
+  signalType: signalTypeSchema.nullable(),
   title: z.string().min(1).max(300),
-
   summary: z.string().min(1).max(2000),
+  sourceUrls: z.array(z.string().url()),
+  sourceDomains: z.array(z.string()),
+  topicTags: z.array(z.string().min(1).max(200)),
+  jurisdictionTags: z.array(z.string().min(1).max(32)),
+  observedAt: isoDateSchema,
+  extractedAt: isoDateSchema,
+  importance: score100Schema,
+  confidence: score100Schema,
+  details: entityTypeDetailsSchema.optional(),
+};
 
-  signalType: signalTypeSchema,
+// ---------------------------------------------------------------------------
+// Objective-specific schemas
+// ---------------------------------------------------------------------------
 
-  dateObserved: isoDateSchema,
-
+export const activitySignalSchema = z.object({
+  ...baseSignalFields,
+  objective: z.literal('activities'),
+  changeType: z.string().min(1).max(200),
   eventDate: isoDateSchema.optional(),
-
-  effectiveDate: isoDateSchema.optional(),
-
-  jurisdiction: z.string().min(1).max(32),
-
-  sectors: z
-    .array(z.string().min(1).max(64))
-    .min(1, 'at least one sector required'),
-
-  topics: z
-    .array(z.string().min(1).max(200))
-    .min(1, 'at least one topic required'),
-
-  layers: z
-    .array(layerSchema)
-    .min(1, 'at least one layer required'),
-
-  roles: z
-    .array(roleSchema)
-    .min(1, 'at least one role required'),
-
-  sourceIds: z
-    .array(z.string().min(1))
-    .min(1, 'at least one source required'),
-
-  primaryEntityId: z.string().min(1),
-
-  relatedEntityIds: z.array(z.string().min(1)),
-
-  legalStatus: legalStatusSchema.optional(),
-
-  importanceScore: score100Schema,
-
-  effortLevel: effortLevelSchema,
-
-  confidenceScore: score100Schema,
-
-  dedupeKey: z.string().min(1).max(256),
-
-  positions: z.array(signalPositionSchema).optional(),
+  actorsMentioned: z.array(z.string().min(1).max(200)),
 });
 
+export const positionSignalSchema = z.object({
+  ...baseSignalFields,
+  objective: z.literal('positions'),
+  topic: z.string().min(1).max(300),
+  positionLabel: z.string().min(1).max(300),
+  stance: stanceSchema,
+  strength: score5Schema,
+  evidenceSnippets: z.array(z.string().min(1).max(1000)),
+});
+
+export const prioritySignalSchema = z.object({
+  ...baseSignalFields,
+  objective: z.literal('priorities'),
+  priorityLabel: z.string().min(1).max(300),
+  priorityDirection: priorityDirectionSchema,
+  momentum: score5Schema,
+  rationale: z.string().min(1).max(2000),
+  supportingSignalIds: z.array(z.string().min(1)),
+});
+
+// ---------------------------------------------------------------------------
+// Signal — discriminated union on objective
+// ---------------------------------------------------------------------------
+
+export const signalSchema = z.discriminatedUnion('objective', [
+  activitySignalSchema,
+  positionSignalSchema,
+  prioritySignalSchema,
+]);
+
+export type ValidatedActivitySignal = z.infer<typeof activitySignalSchema>;
+export type ValidatedPositionSignal = z.infer<typeof positionSignalSchema>;
+export type ValidatedPrioritySignal = z.infer<typeof prioritySignalSchema>;
 export type ValidatedSignal = z.infer<typeof signalSchema>;
 
 // ---------------------------------------------------------------------------
-// SignalActor schema
+// Validation helpers
 // ---------------------------------------------------------------------------
 
-export const signalActorSchema = z.object({
-  signalId: z.string().min(1),
-  entityId: z.string().min(1),
-  role: roleSchema,
-  layer: layerSchema,
-  actorWeight: actorWeightSchema.optional(),
-});
-
-export type ValidatedSignalActor = z.infer<typeof signalActorSchema>;
-
-// ---------------------------------------------------------------------------
-// Signal validation helpers
-// ---------------------------------------------------------------------------
-
-/** Throws ZodError with full path/message detail on invalid input. */
+/** Throws ZodError on invalid input. */
 export function validateSignal(data: unknown): ValidatedSignal {
   return signalSchema.parse(data);
 }
