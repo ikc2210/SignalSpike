@@ -1,4 +1,18 @@
+# Dependencies
 node_modules/
+
+# Build outputs
 dist/
+.next/
+
+# TypeScript build cache
+*.tsbuildinfo
+
+# Source maps
 *.js.map
 *.d.ts.map
+
+# Environment files (secrets)
+.env
+.env.*
+!.env.example
