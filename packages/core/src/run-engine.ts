@@ -1,6 +1,7 @@
 import { prisma } from '@perplexity/db';
 import { createPerplexityClient } from '@perplexity/provider-perplexity';
 import { expandQueryPattern } from './template-expander.js';
+import { enqueueRun } from './queue.js';
 
 export async function executeRun(templateId: string, entityId?: string): Promise<string> {
   const template = await prisma.queryTemplate.findUniqueOrThrow({ where: { id: templateId } });
@@ -48,9 +49,9 @@ export async function executeRun(templateId: string, entityId?: string): Promise
       },
     });
 
-    // For discovery templates: create proposed entities from response
+    // For discovery templates: process discovered entities
     if (template.templateType === 'entity_type_discovery') {
-      await createProposedEntities(run.id, template.entityTypes, result.content);
+      await processDiscoveredEntities(run.id, template.entityTypes, result.content);
     }
 
     await prisma.monitoringRun.update({
@@ -84,29 +85,60 @@ function extractDomain(url: string): string {
   }
 }
 
-async function createProposedEntities(
+function extractEntityNames(content: string): string[] {
+  const names: string[] = [];
+
+  // Primary: markdown section headers (## 1) Entity Name or ## Entity Name)
+  const headerRe = /^#{1,3}\s+(?:\d+[.)]\s*)?(.+)$/gm;
+  let m: RegExpExecArray | null;
+  while ((m = headerRe.exec(content)) !== null) {
+    const name = (m[1] ?? '').replace(/\*\*/g, '').replace(/:\s*$/, '').trim();
+    if (name.length >= 5 && name.length <= 150) names.push(name);
+  }
+
+  // Fallback: numbered list items
+  if (names.length === 0) {
+    const listRe = /^\d+[.)]\s+\*{0,2}([^*\n]+)\*{0,2}/gm;
+    while ((m = listRe.exec(content)) !== null) {
+      const name = (m[1] ?? '').trim();
+      if (name.length >= 5 && name.length <= 150) names.push(name);
+    }
+  }
+
+  const boilerplate = /^(bottom line|summary|overview|conclusion|key takeaways?|introduction|background|note)$/i;
+  return [...new Set(names)].filter((n) => !boilerplate.test(n)).slice(0, 10);
+}
+
+async function processDiscoveredEntities(
   runId: string,
   entityTypes: string[],
   content: string,
 ): Promise<void> {
-  // Extract entity names from discovery response using Perplexity to parse structure
-  // For v1: extract lines that look like entity names (capitalized phrases)
-  const lines = content.split('\n').filter((l) => l.trim().length > 0);
-  const candidates = lines
-    .map((l) => l.replace(/^[\d.\-*•]+\s*/, '').trim())
-    .filter((l) => l.length > 5 && l.length < 200)
-    .slice(0, 10); // max 10 candidates per run
-
   const entityType = entityTypes[0] ?? 'executive_body';
+  const names = extractEntityNames(content);
 
-  for (const name of candidates) {
-    // Check if entity with similar name already exists
+  const monitoringTemplates = await prisma.queryTemplate.findMany({
+    where: { templateType: 'entity_monitoring', active: true, entityTypes: { has: entityType } },
+    select: { id: true },
+  });
+
+  for (const name of names) {
     const existing = await prisma.entity.findFirst({
-      where: { name: { contains: name.slice(0, 30), mode: 'insensitive' } },
+      where: { name: { equals: name, mode: 'insensitive' } },
     });
-    if (existing) continue;
 
-    await prisma.entity.create({
+    if (existing) {
+      // Run monitoring immediately for approved and proposed entities alike.
+      // Proposed entities won't appear in future scheduled/manual monitoring runs
+      // (those filter to approved-only) but get an initial run so the user has
+      // data to inform their approval decision.
+      if (existing.approvalState !== 'rejected') {
+        await Promise.all(monitoringTemplates.map((t) => enqueueRun(t.id, existing.id)));
+      }
+      continue;
+    }
+
+    const newEntity = await prisma.entity.create({
       data: {
         name,
         entityType,
@@ -117,6 +149,8 @@ async function createProposedEntities(
         discoveredBy: runId,
       },
     });
+    // Same logic: run immediately so the user can evaluate before approving.
+    await Promise.all(monitoringTemplates.map((t) => enqueueRun(t.id, newEntity.id)));
   }
 }
 

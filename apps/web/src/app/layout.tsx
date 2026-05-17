@@ -7,10 +7,14 @@ export const metadata: Metadata = {
   description: 'Monitor AI policy developments across entities and regulators',
 };
 
-const navLinks = [
-  { href: '/templates', label: 'Templates' },
+const mainNavLinks = [
   { href: '/entities', label: 'Entities' },
   { href: '/runs', label: 'Runs' },
+];
+
+const settingsNavLinks = [
+  { href: '/settings/templates', label: 'Query Templates' },
+  { href: '/settings/profile', label: 'User Information' },
 ];
 
 export default function RootLayout({
@@ -30,7 +34,7 @@ export default function RootLayout({
             <p className="mt-0.5 text-xs text-white/40">Monitor</p>
           </div>
           <nav className="flex flex-col gap-1 px-3 py-4">
-            {navLinks.map((link) => (
+            {mainNavLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
@@ -39,6 +43,21 @@ export default function RootLayout({
                 {link.label}
               </Link>
             ))}
+
+            <div className="mt-4">
+              <p className="px-3 pb-1 text-xs font-semibold uppercase tracking-wider text-white/30">
+                Settings
+              </p>
+              {settingsNavLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className="block rounded px-3 py-1.5 text-sm text-white/60 transition-colors hover:bg-white/10 hover:text-white"
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </div>
           </nav>
         </aside>
 
