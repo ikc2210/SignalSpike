@@ -127,6 +127,8 @@ Entities are the organizations and bodies being monitored. Each has an `entityTy
 
 Entities have `aliases` (acronyms and alternate names) used for deduplication during discovery — so "OSTP" and "Office of Science and Technology Policy" resolve to the same entity.
 
+10 starter entityTypes were defined to meet the the scope and time constraint of the interview.
+
 ---
 
 ## Query templates
@@ -157,6 +159,8 @@ Set your profile at `/settings` (role, entity, entity type, primary remit). The 
 | Additional topic token overlap beyond the first match | up to +10 |
 
 The score is added on top of the signal's base `importance` value. Activities are re-ranked within recency buckets (today / this week / earlier). Positions and Priorities are sorted by score across the full result set. With no profile set, ordering falls back to `importance` alone.
+
+Future iterations could incorporate natural-language user settings, but the V1 iteration prioritized structured personalization.
 
 ---
 
